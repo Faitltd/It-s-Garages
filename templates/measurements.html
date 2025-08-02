@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}All Measurements - It's Garages{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h2>📋 All Measurements</h2>
+            <p>{{ measurements|length }} total entries</p>
+        </div>
+        <div>
+            <a href="{{ url_for('entry_form') }}" class="btn btn-success">➕ Add New Entry</a>
+            <a href="{{ url_for('export_data') }}" class="btn btn-secondary" target="_blank">📤 Export Data</a>
+        </div>
+    </div>
+</div>
+
+{% if measurements %}
+<div class="card">
+    <div style="margin-bottom: 1rem;">
+        <input type="text" id="search-input" placeholder="🔍 Search addresses..." 
+               style="padding: 0.5rem; border: 2px solid #e9ecef; border-radius: 4px; width: 300px; max-width: 100%;">
+        <select id="filter-garage" style="padding: 0.5rem; border: 2px solid #e9ecef; border-radius: 4px; margin-left: 1rem;">
+            <option value="">All Properties</option>
+            <option value="true">With Garage</option>
+            <option value="false">Without Garage</option>
+        </select>
+    </div>
+    
+    <div class="table-container" style="overflow-x: auto;">
+        <table class="table" id="measurements-table">
+            <thead>
+                <tr>
+                    <th style="cursor: pointer;" onclick="sortTable(0)">Address 📍</th>
+                    <th style="cursor: pointer;" onclick="sortTable(1)">Has Garage</th>
+                    <th style="cursor: pointer;" onclick="sortTable(2)">Type</th>
+                    <th style="cursor: pointer;" onclick="sortTable(3)">Width (ft)</th>
+                    <th style="cursor: pointer;" onclick="sortTable(4)">Depth (ft)</th>
+                    <th style="cursor: pointer;" onclick="sortTable(5)">Height (ft)</th>
+                    <th style="cursor: pointer;" onclick="sortTable(6)">Doors</th>
+                    <th style="cursor: pointer;" onclick="sortTable(7)">Confidence</th>
+                    <th style="cursor: pointer;" onclick="sortTable(8)">Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for measurement in measurements %}
+                <tr>
+                    <td>
+                        <strong>{{ measurement.address }}</strong>
+                        {% if measurement.notes %}
+                        <br><small style="color: #7f8c8d;">{{ measurement.notes[:50] }}{% if measurement.notes|length > 50 %}...{% endif %}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if measurement.has_garage %}
+                            <span style="color: #27ae60;">✅ Yes</span>
+                        {% else %}
+                            <span style="color: #e74c3c;">❌ No</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ measurement.garage_type|title if measurement.garage_type else '-' }}</td>
+                    <td>{{ measurement.garage_width_feet if measurement.garage_width_feet > 0 else '-' }}</td>
+                    <td>{{ measurement.garage_depth_feet if measurement.garage_depth_feet > 0 else '-' }}</td>
+                    <td>{{ measurement.garage_height_feet if measurement.garage_height_feet > 0 else '-' }}</td>
+                    <td>{{ measurement.door_count if measurement.door_count else '-' }}</td>
+                    <td>
+                        {% if measurement.confidence == 'high' %}
+                            <span style="color: #27ae60;">🟢 High</span>
+                        {% elif measurement.confidence == 'medium' %}
+                            <span style="color: #f39c12;">🟡 Medium</span>
+                        {% else %}
+                            <span style="color: #e74c3c;">🔴 Low</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if measurement.measured_date %}
+                            {{ measurement.measured_date[:10] }}
+                            <br><small style="color: #7f8c8d;">{{ measurement.measured_date[11:16] }}</small>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <a href="{{ url_for('edit_measurement', property_id=measurement.property_id) }}" 
+                               class="btn btn-secondary" 
+                               style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">✏️ Edit</a>
+                            <button onclick="deleteEntry('{{ measurement.property_id }}')" 
+                                    class="btn btn-danger" 
+                                    style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">🗑️</button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <h3>📊 Quick Stats</h3>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-number" id="filtered-count">{{ measurements|length }}</div>
+            <div class="stat-label">Showing</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ measurements|selectattr('has_garage')|list|length }}</div>
+            <div class="stat-label">With Garage</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ measurements|rejectattr('has_garage')|list|length }}</div>
+            <div class="stat-label">Without Garage</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ measurements|selectattr('confidence', 'equalto', 'high')|list|length }}</div>
+            <div class="stat-label">High Confidence</div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="card text-center">
+    <h3>📝 No Measurements Yet</h3>
+    <p>Start by adding your first garage measurement!</p>
+    <a href="{{ url_for('entry_form') }}" class="btn btn-success mt-2">Add First Entry</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let sortDirection = {};
+    
+    function sortTable(columnIndex) {
+        const table = document.getElementById('measurements-table');
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        
+        // Toggle sort direction
+        sortDirection[columnIndex] = sortDirection[columnIndex] === 'asc' ? 'desc' : 'asc';
+        
+        rows.sort((a, b) => {
+            const aValue = a.cells[columnIndex].textContent.trim();
+            const bValue = b.cells[columnIndex].textContent.trim();
+            
+            // Handle numeric values
+            const aNum = parseFloat(aValue);
+            const bNum = parseFloat(bValue);
+            
+            if (!isNaN(aNum) && !isNaN(bNum)) {
+                return sortDirection[columnIndex] === 'asc' ? aNum - bNum : bNum - aNum;
+            }
+            
+            // Handle text values
+            const comparison = aValue.localeCompare(bValue);
+            return sortDirection[columnIndex] === 'asc' ? comparison : -comparison;
+        });
+        
+        // Re-append sorted rows
+        rows.forEach(row => tbody.appendChild(row));
+        
+        // Update header indicators
+        const headers = table.querySelectorAll('th');
+        headers.forEach((header, index) => {
+            header.style.backgroundColor = index === columnIndex ? '#e9ecef' : '#f8f9fa';
+        });
+    }
+    
+    function filterTable() {
+        const searchTerm = document.getElementById('search-input').value.toLowerCase();
+        const garageFilter = document.getElementById('filter-garage').value;
+        const rows = document.querySelectorAll('#measurements-table tbody tr');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            const address = row.cells[0].textContent.toLowerCase();
+            const hasGarage = row.cells[1].textContent.includes('Yes') ? 'true' : 'false';
+            
+            const matchesSearch = address.includes(searchTerm);
+            const matchesFilter = !garageFilter || hasGarage === garageFilter;
+            
+            if (matchesSearch && matchesFilter) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('filtered-count').textContent = visibleCount;
+    }
+    
+    function deleteEntry(propertyId) {
+        if (confirmDelete('Are you sure you want to delete this entry? This action cannot be undone.')) {
+            fetch(`/delete/${propertyId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showAlert('Entry deleted successfully', 'success');
+                    // Remove the row from the table
+                    const rows = document.querySelectorAll('#measurements-table tbody tr');
+                    rows.forEach(row => {
+                        const editLink = row.querySelector('a[href*="edit"]');
+                        if (editLink && editLink.href.includes(propertyId)) {
+                            row.remove();
+                        }
+                    });
+                    filterTable(); // Update count
+                } else {
+                    showAlert('Error deleting entry: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showAlert('Network error: ' + error.message, 'error');
+            });
+        }
+    }
+    
+    // Set up event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('search-input').addEventListener('input', filterTable);
+        document.getElementById('filter-garage').addEventListener('change', filterTable);
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - It's Garages{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>📊 Dashboard</h2>
+    <p>Welcome to the It's Garages data entry system. Track and manage garage measurements for properties.</p>
+</div>
+
+<div class="stats-grid" id="stats-container">
+    <div class="stat-card">
+        <div class="stat-number" id="total-entries">{{ total_entries }}</div>
+        <div class="stat-label">Total Entries</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" id="with-garage">-</div>
+        <div class="stat-label">With Garage</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" id="without-garage">-</div>
+        <div class="stat-label">Without Garage</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" id="avg-width">-</div>
+        <div class="stat-label">Avg Width (ft)</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" id="avg-depth">-</div>
+        <div class="stat-label">Avg Depth (ft)</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" id="garage-percentage">-</div>
+        <div class="stat-label">Garage %</div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>🚀 Quick Actions</h3>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <a href="{{ url_for('entry_form') }}" class="btn btn-success">➕ Add New Entry</a>
+        <a href="{{ url_for('view_measurements') }}" class="btn">📋 View All Entries</a>
+        <a href="{{ url_for('export_data') }}" class="btn btn-secondary" target="_blank">📤 Export Data</a>
+    </div>
+</div>
+
+{% if recent_entries %}
+<div class="card">
+    <h3>📝 Recent Entries</h3>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Address</th>
+                    <th>Width (ft)</th>
+                    <th>Depth (ft)</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in recent_entries %}
+                <tr>
+                    <td>{{ entry.address }}</td>
+                    <td>{{ entry.garage_width if entry.garage_width > 0 else '-' }}</td>
+                    <td>{{ entry.garage_depth if entry.garage_depth > 0 else '-' }}</td>
+                    <td>{{ entry.date[:10] if entry.date else '-' }}</td>
+                    <td>
+                        <a href="{{ url_for('edit_measurement', property_id=entry.id) }}" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Edit</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card text-center">
+    <h3>🏗️ Get Started</h3>
+    <p>No entries yet. Start by adding your first garage measurement!</p>
+    <a href="{{ url_for('entry_form') }}" class="btn btn-success mt-2">Add First Entry</a>
+</div>
+{% endif %}
+
+<div class="card">
+    <h3>ℹ️ How to Use</h3>
+    <ol style="margin-left: 2rem;">
+        <li><strong>Add Entry:</strong> Click "Add New Entry" to record garage measurements for a property</li>
+        <li><strong>View All:</strong> See all recorded measurements in a sortable table</li>
+        <li><strong>Edit:</strong> Click "Edit" next to any entry to modify the data</li>
+        <li><strong>Export:</strong> Download all data as JSON for analysis or backup</li>
+    </ol>
+    
+    <h4 style="margin-top: 2rem;">📏 Measurement Guidelines</h4>
+    <ul style="margin-left: 2rem;">
+        <li><strong>Width:</strong> Measure the front-facing width of the garage opening</li>
+        <li><strong>Depth:</strong> Measure from the garage door to the back wall</li>
+        <li><strong>Height:</strong> Measure from floor to ceiling at the garage door</li>
+        <li><strong>Door Count:</strong> Number of separate garage doors (1, 2, or 3)</li>
+        <li><strong>Confidence:</strong> How certain you are about the measurements</li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Load statistics on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStats();
+    });
+    
+    function loadStats() {
+        fetch('/stats')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('total-entries').textContent = data.total_properties;
+                document.getElementById('with-garage').textContent = data.with_garage;
+                document.getElementById('without-garage').textContent = data.without_garage;
+                document.getElementById('avg-width').textContent = data.average_width;
+                document.getElementById('avg-depth').textContent = data.average_depth;
+                document.getElementById('garage-percentage').textContent = data.garage_percentage + '%';
+            })
+            .catch(error => {
+                console.error('Error loading stats:', error);
+            });
+    }
+</script>
+{% endblock %}

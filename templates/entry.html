@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}{% if measurement %}Edit Entry{% else %}Add Entry{% endif %} - It's Garages{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>{% if measurement %}✏️ Edit Entry{% else %}➕ Add New Entry{% endif %}</h2>
+    <p>{% if measurement %}Update the garage measurements for this property.{% else %}Enter garage measurements for a new property.{% endif %}</p>
+</div>
+
+<div class="card">
+    <form id="measurement-form">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="address">Property Address *</label>
+                <input type="text" id="address" name="address" required 
+                       placeholder="123 Main St, City, State 12345"
+                       value="{{ measurement.address if measurement else '' }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="has_garage">Has Garage?</label>
+                <select id="has_garage" name="has_garage" onchange="toggleGarageFields()">
+                    <option value="true" {% if not measurement or measurement.has_garage %}selected{% endif %}>Yes</option>
+                    <option value="false" {% if measurement and not measurement.has_garage %}selected{% endif %}>No</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="garage_type">Garage Type</label>
+                <select id="garage_type" name="garage_type">
+                    <option value="attached" {% if not measurement or measurement.garage_type == 'attached' %}selected{% endif %}>Attached</option>
+                    <option value="detached" {% if measurement and measurement.garage_type == 'detached' %}selected{% endif %}>Detached</option>
+                    <option value="carport" {% if measurement and measurement.garage_type == 'carport' %}selected{% endif %}>Carport</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="garage-fields">
+            <h3>📏 Garage Measurements</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="garage_width_feet">Width (feet)</label>
+                    <input type="number" id="garage_width_feet" name="garage_width_feet" 
+                           step="0.1" min="0" max="100"
+                           placeholder="24.0"
+                           value="{{ measurement.garage_width_feet if measurement else '' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="garage_depth_feet">Depth (feet)</label>
+                    <input type="number" id="garage_depth_feet" name="garage_depth_feet" 
+                           step="0.1" min="0" max="100"
+                           placeholder="22.0"
+                           value="{{ measurement.garage_depth_feet if measurement else '' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="garage_height_feet">Height (feet)</label>
+                    <input type="number" id="garage_height_feet" name="garage_height_feet" 
+                           step="0.1" min="0" max="20"
+                           placeholder="8.0"
+                           value="{{ measurement.garage_height_feet if measurement else '' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="door_count">Number of Doors</label>
+                    <select id="door_count" name="door_count">
+                        <option value="1" {% if not measurement or measurement.door_count == 1 %}selected{% endif %}>1</option>
+                        <option value="2" {% if measurement and measurement.door_count == 2 %}selected{% endif %}>2</option>
+                        <option value="3" {% if measurement and measurement.door_count == 3 %}selected{% endif %}>3</option>
+                        <option value="4" {% if measurement and measurement.door_count == 4 %}selected{% endif %}>4</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="door_width_feet">Door Width (feet)</label>
+                    <input type="number" id="door_width_feet" name="door_width_feet" 
+                           step="0.1" min="0" max="20"
+                           placeholder="8.0"
+                           value="{{ measurement.door_width_feet if measurement else '' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="door_height_feet">Door Height (feet)</label>
+                    <input type="number" id="door_height_feet" name="door_height_feet" 
+                           step="0.1" min="0" max="15"
+                           placeholder="7.0"
+                           value="{{ measurement.door_height_feet if measurement else '' }}">
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="confidence">Measurement Confidence</label>
+                <select id="confidence" name="confidence">
+                    <option value="high" {% if measurement and measurement.confidence == 'high' %}selected{% endif %}>High - Very certain</option>
+                    <option value="medium" {% if not measurement or measurement.confidence == 'medium' %}selected{% endif %}>Medium - Reasonably certain</option>
+                    <option value="low" {% if measurement and measurement.confidence == 'low' %}selected{% endif %}>Low - Best guess</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="notes">Notes (Optional)</label>
+            <textarea id="notes" name="notes" rows="3" 
+                      placeholder="Any additional observations or details...">{{ measurement.notes if measurement else '' }}</textarea>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <button type="submit" class="btn btn-success">
+                {% if measurement %}💾 Update Entry{% else %}💾 Save Entry{% endif %}
+            </button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">❌ Cancel</a>
+            {% if measurement %}
+            <button type="button" class="btn btn-danger" onclick="deleteEntry('{{ property_id }}')">
+                🗑️ Delete Entry
+            </button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h3>💡 Measurement Tips</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+        <div>
+            <h4>🏠 Standard Garage Sizes</h4>
+            <ul>
+                <li><strong>Single:</strong> 12' × 20' to 16' × 24'</li>
+                <li><strong>Double:</strong> 20' × 20' to 24' × 24'</li>
+                <li><strong>Triple:</strong> 30' × 20' to 36' × 24'</li>
+            </ul>
+        </div>
+        <div>
+            <h4>📐 Measurement Guidelines</h4>
+            <ul>
+                <li>Measure to the nearest 0.5 feet</li>
+                <li>Width = front-facing dimension</li>
+                <li>Depth = front to back</li>
+                <li>Height = floor to ceiling at door</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleGarageFields() {
+        const hasGarage = document.getElementById('has_garage').value === 'true';
+        const garageFields = document.getElementById('garage-fields');
+        const inputs = garageFields.querySelectorAll('input, select');
+        
+        if (hasGarage) {
+            garageFields.style.display = 'block';
+            inputs.forEach(input => input.disabled = false);
+        } else {
+            garageFields.style.display = 'none';
+            inputs.forEach(input => input.disabled = true);
+        }
+    }
+    
+    function deleteEntry(propertyId) {
+        if (confirmDelete('Are you sure you want to delete this entry? This action cannot be undone.')) {
+            fetch(`/delete/${propertyId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showAlert('Entry deleted successfully', 'success');
+                    setTimeout(() => {
+                        window.location.href = '{{ url_for("index") }}';
+                    }, 1500);
+                } else {
+                    showAlert('Error deleting entry: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showAlert('Network error: ' + error.message, 'error');
+            });
+        }
+    }
+    
+    document.getElementById('measurement-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const data = {};
+        for (let [key, value] of formData.entries()) {
+            data[key] = value;
+        }
+        
+        const url = {% if measurement %}'{{ url_for("update_measurement", property_id=property_id) }}'{% else %}'{{ url_for("save_measurement") }}'{% endif %};
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showAlert(data.message, 'success');
+                {% if not measurement %}
+                // Clear form for new entry
+                this.reset();
+                document.getElementById('has_garage').value = 'true';
+                toggleGarageFields();
+                {% else %}
+                // Redirect to dashboard after update
+                setTimeout(() => {
+                    window.location.href = '{{ url_for("index") }}';
+                }, 1500);
+                {% endif %}
+            } else {
+                showAlert('Error: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            showAlert('Network error: ' + error.message, 'error');
+        });
+    });
+    
+    // Initialize garage fields visibility
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleGarageFields();
+    });
+</script>
+{% endblock %}
