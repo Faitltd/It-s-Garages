@@ -55,14 +55,14 @@
 
 	onMount(() => {
 		if (browser) {
-			const token = localStorage.getItem('token');
+			const token = localStorage.getItem('authToken');
 			const userData = localStorage.getItem('user');
-			
+
 			if (!token || !userData) {
 				goto('/login');
 				return;
 			}
-			
+
 			user = JSON.parse(userData);
 		}
 	});
@@ -74,7 +74,7 @@
 		success = '';
 
 		try {
-			const token = localStorage.getItem('token');
+			const token = localStorage.getItem('authToken');
 			
 			const submitData = new FormData();
 			Object.keys(formData).forEach(key => {

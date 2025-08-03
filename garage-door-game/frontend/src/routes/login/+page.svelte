@@ -163,6 +163,7 @@
 							id="email"
 							name="email"
 							type="email"
+							autocomplete="email"
 							bind:value={email}
 							required
 							class="input-field"
@@ -181,6 +182,7 @@
 							id="password"
 							name="password"
 							type="password"
+							autocomplete={isLogin ? "current-password" : "new-password"}
 							bind:value={password}
 							required
 							class="input-field"
@@ -200,6 +202,7 @@
 								id="confirmPassword"
 								name="confirmPassword"
 								type="password"
+								autocomplete="new-password"
 								bind:value={confirmPassword}
 								required={!isLogin}
 								class="input-field"
