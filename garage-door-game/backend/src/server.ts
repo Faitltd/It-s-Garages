@@ -19,6 +19,7 @@ import userRoutes from './routes/users';
 import jobRoutes from './routes/jobs';
 import gameRoutes from './routes/game';
 import leaderboardRoutes from './routes/leaderboard';
+import dataRoutes from './routes/data';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -122,6 +123,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/data', dataRoutes);
 
 // API info endpoint
 app.get('/api', (req, res) => {

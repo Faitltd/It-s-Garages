@@ -90,6 +90,37 @@ export const initializeDatabase = (): Promise<void> => {
         )
       `);
 
+      // Data submissions table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS data_submissions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          address TEXT NOT NULL,
+          garage_door_size TEXT NOT NULL,
+          material TEXT NOT NULL,
+          color TEXT NOT NULL,
+          style TEXT NOT NULL,
+          notes TEXT,
+          photo_path TEXT,
+          status TEXT DEFAULT 'pending',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+      `);
+
+      // Score logs table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS score_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          points_awarded INTEGER NOT NULL,
+          reason TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+      `);
+
       // Leaderboard view (virtual table)
       db.run(`
         CREATE VIEW IF NOT EXISTS leaderboard AS
@@ -106,6 +137,14 @@ export const initializeDatabase = (): Promise<void> => {
         ORDER BY u.total_points DESC
       `);
 
+      // Add data_submissions column to users table if it doesn't exist
+      db.run(`ALTER TABLE users ADD COLUMN data_submissions INTEGER DEFAULT 0`, (err) => {
+        // Ignore error if column already exists
+        if (err && !err.message.includes('duplicate column name')) {
+          console.error('Error adding data_submissions column:', err);
+        }
+      });
+
       // Indexes for performance
       db.run(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
       db.run(`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`);
@@ -113,6 +152,7 @@ export const initializeDatabase = (): Promise<void> => {
       db.run(`CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)`);
       db.run(`CREATE INDEX IF NOT EXISTS idx_game_sessions_user_id ON game_sessions(user_id)`);
       db.run(`CREATE INDEX IF NOT EXISTS idx_game_sessions_job_id ON game_sessions(job_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_data_submissions_user_id ON data_submissions(user_id)`);
 
       // Triggers for updating timestamps
       db.run(`
