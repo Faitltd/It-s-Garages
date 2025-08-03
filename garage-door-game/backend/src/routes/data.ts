@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
-import { authenticateToken } from '../middleware/auth';
-import { createError } from '../utils/errors';
-import { db } from '../database/database';
+import { authenticate } from '../middleware/auth';
+import { db } from '../config/database';
 
 const router = Router();
 
@@ -28,13 +27,13 @@ const upload = multer({
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'), false);
+      cb(null, false);
     }
   }
 });
 
 // Submit garage door data
-router.post('/submit', authenticateToken, upload.single('photo'), async (req, res, next) => {
+router.post('/submit', authenticate, upload.single('photo'), (req: any, res, next) => {
   try {
     const userId = req.user.id;
     const {
@@ -48,74 +47,75 @@ router.post('/submit', authenticateToken, upload.single('photo'), async (req, re
 
     // Validate required fields
     if (!address || !garageDoorSize || !material || !color || !style) {
-      throw createError('All required fields must be provided', 400);
+      return res.status(400).json({ success: false, error: 'All required fields must be provided' });
     }
 
     // Get photo path if uploaded
     const photoPath = req.file ? req.file.filename : null;
 
     // Insert data submission into database
-    const stmt = db.prepare(`
+    db.run(`
       INSERT INTO data_submissions (
         user_id, address, garage_door_size, material, color, style, notes, photo_path, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `);
+    `, [userId, address, garageDoorSize, material, color, style, notes || null, photoPath], function(err) {
+      if (err) {
+        return res.status(500).json({ success: false, error: 'Failed to submit data' });
+      }
 
-    const result = stmt.run(
-      userId,
-      address,
-      garageDoorSize,
-      material,
-      color,
-      style,
-      notes || null,
-      photoPath
-    );
+      const submissionId = this.lastID;
 
-    // Award points for data submission
-    const pointsAwarded = 50; // Base points for data submission
-    const bonusPoints = photoPath ? 25 : 0; // Bonus for including photo
-    const totalPoints = pointsAwarded + bonusPoints;
+      // Award points for data submission
+      const pointsAwarded = 50; // Base points for data submission
+      const bonusPoints = photoPath ? 25 : 0; // Bonus for including photo
+      const totalPoints = pointsAwarded + bonusPoints;
 
-    // Update user's score
-    const updateScoreStmt = db.prepare(`
-      UPDATE users 
-      SET total_score = total_score + ?, 
-          data_submissions = data_submissions + 1,
-          updated_at = datetime('now')
-      WHERE id = ?
-    `);
-    updateScoreStmt.run(totalPoints, userId);
+      // Update user's score
+      db.run(`
+        UPDATE users
+        SET total_points = total_points + ?,
+            data_submissions = data_submissions + 1,
+            updated_at = datetime('now')
+        WHERE id = ?
+      `, [totalPoints, userId], (err) => {
+        if (err) {
+          console.error('Error updating user score:', err);
+        }
+      });
 
-    // Log the points awarded
-    const logStmt = db.prepare(`
-      INSERT INTO score_logs (user_id, points_awarded, reason, created_at)
-      VALUES (?, ?, ?, datetime('now'))
-    `);
-    logStmt.run(userId, totalPoints, 'Data submission');
+      // Log the points awarded
+      db.run(`
+        INSERT INTO score_logs (user_id, points_awarded, reason, created_at)
+        VALUES (?, ?, ?, datetime('now'))
+      `, [userId, totalPoints, 'Data submission'], (err) => {
+        if (err) {
+          console.error('Error logging points:', err);
+        }
+      });
 
-    res.json({
-      success: true,
-      message: 'Data submitted successfully',
-      pointsAwarded: totalPoints,
-      submissionId: result.lastInsertRowid
+      res.json({
+        success: true,
+        message: 'Data submitted successfully',
+        pointsAwarded: totalPoints,
+        submissionId: submissionId
+      });
     });
 
   } catch (error) {
-    next(error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
 // Get user's data submissions
-router.get('/my-submissions', authenticateToken, async (req, res, next) => {
+router.get('/my-submissions', authenticate, (req: any, res, next) => {
   try {
     const userId = req.user.id;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = (page - 1) * limit;
 
-    const stmt = db.prepare(`
-      SELECT 
+    db.all(`
+      SELECT
         id,
         address,
         garage_door_size,
@@ -126,43 +126,49 @@ router.get('/my-submissions', authenticateToken, async (req, res, next) => {
         photo_path,
         created_at,
         status
-      FROM data_submissions 
+      FROM data_submissions
       WHERE user_id = ?
       ORDER BY created_at DESC
       LIMIT ? OFFSET ?
-    `);
-
-    const submissions = stmt.all(userId, limit, offset);
-
-    // Get total count
-    const countStmt = db.prepare('SELECT COUNT(*) as total FROM data_submissions WHERE user_id = ?');
-    const { total } = countStmt.get(userId) as { total: number };
-
-    res.json({
-      success: true,
-      submissions,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit)
+    `, [userId, limit, offset], (err, submissions) => {
+      if (err) {
+        return res.status(500).json({ success: false, error: 'Failed to fetch submissions' });
       }
+
+      // Get total count
+      db.get('SELECT COUNT(*) as total FROM data_submissions WHERE user_id = ?', [userId], (err, row: any) => {
+        if (err) {
+          return res.status(500).json({ success: false, error: 'Failed to get count' });
+        }
+
+        const total = row.total;
+        res.json({
+          success: true,
+          submissions,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit)
+          }
+        });
+      });
     });
 
   } catch (error) {
-    next(error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
 // Get all data submissions (admin only - for now just return user's own)
-router.get('/all', authenticateToken, async (req, res, next) => {
+router.get('/all', authenticate, (req: any, res, next) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = (page - 1) * limit;
 
-    const stmt = db.prepare(`
-      SELECT 
+    db.all(`
+      SELECT
         ds.id,
         ds.address,
         ds.garage_door_size,
@@ -178,27 +184,33 @@ router.get('/all', authenticateToken, async (req, res, next) => {
       JOIN users u ON ds.user_id = u.id
       ORDER BY ds.created_at DESC
       LIMIT ? OFFSET ?
-    `);
-
-    const submissions = stmt.all(limit, offset);
-
-    // Get total count
-    const countStmt = db.prepare('SELECT COUNT(*) as total FROM data_submissions');
-    const { total } = countStmt.get() as { total: number };
-
-    res.json({
-      success: true,
-      submissions,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit)
+    `, [limit, offset], (err, submissions) => {
+      if (err) {
+        return res.status(500).json({ success: false, error: 'Failed to fetch submissions' });
       }
+
+      // Get total count
+      db.get('SELECT COUNT(*) as total FROM data_submissions', [], (err, row: any) => {
+        if (err) {
+          return res.status(500).json({ success: false, error: 'Failed to get count' });
+        }
+
+        const total = row.total;
+        res.json({
+          success: true,
+          submissions,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit)
+          }
+        });
+      });
     });
 
   } catch (error) {
-    next(error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
