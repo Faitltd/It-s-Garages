@@ -92,7 +92,7 @@
 	// Results
 	let scoreResult: ScoreResult | null = null;
 
-	const API_BASE = 'http://localhost:3001/api';
+	const API_BASE = 'https://garage-door-backend-341270520862.us-central1.run.app/api';
 
 	// Get auth token from localStorage
 	function getAuthToken(): string | null {

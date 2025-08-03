@@ -7,11 +7,17 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Install build dependencies for SQLite3
+RUN apk add --no-cache python3 make g++
+
 # Install all dependencies (including dev dependencies for build)
 RUN npm ci
 
 # Copy source code
 COPY . .
+
+# Rebuild SQLite3 for the correct architecture
+RUN npm rebuild sqlite3
 
 # Create uploads directory
 RUN mkdir -p uploads
