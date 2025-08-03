@@ -28,6 +28,12 @@ import { auditApiRequests, detectSuspiciousActivity, logFailedAuth } from './mid
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy for Cloud Run (fixes rate limiting issues)
+app.set('trust proxy', true);
+
+// Trust proxy for Cloud Run (fixes rate limiting issues)
+app.set('trust proxy', true);
+
 // Enhanced security middleware
 app.use(helmet({
   contentSecurityPolicy: {

@@ -125,10 +125,16 @@ class GoogleApiService {
     fov?: number;
   }): string {
     const apiKey = this.getStreetViewApiKey();
+
+    // If no valid API key, return a placeholder image
+    if (!apiKey || apiKey === 'placeholder-key') {
+      return `https://via.placeholder.com/640x640/228B22/FFFFFF?text=GARAGE+DOOR+DEMO`;
+    }
+
     const baseUrl = 'https://maps.googleapis.com/maps/api/streetview';
-    
+
     const urlParams = new URLSearchParams();
-    
+
     // Location parameter (either location string or lat/lng)
     if (params.location) {
       urlParams.append('location', params.location);
@@ -137,15 +143,15 @@ class GoogleApiService {
     } else {
       throw createError('Either location or lat/lng coordinates are required', 400);
     }
-    
+
     // Optional parameters with defaults
     urlParams.append('size', params.size || '640x640');
     urlParams.append('key', apiKey);
-    
+
     if (params.heading !== undefined) {
       urlParams.append('heading', params.heading.toString());
     }
-    
+
     if (params.pitch !== undefined) {
       urlParams.append('pitch', params.pitch.toString());
     }
