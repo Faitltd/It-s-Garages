@@ -5,6 +5,16 @@ import { auditDataAccess } from '../middleware/auditMiddleware';
 import { checkGoogleApiLimits, validateGoogleApiConfig, logGoogleApiUsage } from '../middleware/googleApiSecurity';
 import { googleApiLimiter } from '../services/googleApiService';
 import { googleApiService } from '../services/googleApiService';
+import {
+  createGameSession,
+  getGameSession,
+  updateGameSession,
+  calculateScore,
+  getUserGameHistory,
+  updateUserStats,
+  generateRandomLocation,
+  getTimeLimitForDifficulty
+} from '../services/gameService';
 import { createError } from '../middleware/errorHandler';
 import Joi from 'joi';
 
@@ -48,16 +58,172 @@ router.post('/start',
 
       const { difficulty, location } = req.body;
 
-      // For now, return a placeholder response
-      // TODO: Implement full game logic
+      // Generate random location if not provided
+      let gameLocation = location;
+      if (!gameLocation) {
+        gameLocation = generateRandomLocation(difficulty || 'medium');
+      }
+
+      // Build Street View URL
+      const streetViewUrl = googleApiService.buildStreetViewUrl({
+        lat: gameLocation.lat,
+        lng: gameLocation.lng,
+        size: '640x640',
+        heading: Math.floor(Math.random() * 360), // Random heading
+        pitch: 0,
+        fov: 90
+      });
+
+      // Create game session in database
+      const sessionId = await createGameSession(req.user.userId, gameLocation, difficulty || 'medium');
+
       res.json({
         success: true,
-        message: 'Game engine implementation in progress',
         data: {
-          sessionId: Date.now(), // Temporary ID
+          sessionId,
+          streetViewUrl,
+          location: {
+            lat: gameLocation.lat,
+            lng: gameLocation.lng,
+            address: gameLocation.address
+          },
           difficulty: difficulty || 'medium',
-          location: location || { lat: 40.7128, lng: -74.0060, address: 'New York, NY' },
-          timeLimit: 30
+          timeLimit: getTimeLimitForDifficulty(difficulty || 'medium')
+        }
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// @desc    Submit a guess for the current game
+// @route   POST /api/game/guess
+// @access  Private
+router.post('/guess',
+  authenticate,
+  validate(submitGuessSchema),
+  auditDataAccess('game', 'guess'),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      if (!req.user) {
+        return next(createError('User not found in request', 401));
+      }
+
+      const { sessionId, garageCount, garageWidth, garageHeight, garageType, confidence } = req.body;
+
+      // Validate session belongs to user
+      const session = await getGameSession(sessionId, req.user.userId);
+      if (!session) {
+        return next(createError('Game session not found or access denied', 404));
+      }
+
+      if (session.guess_door_count !== null) {
+        return next(createError('Game session already completed', 400));
+      }
+
+      // Calculate score based on accuracy
+      const score = await calculateScore(session, {
+        garageCount,
+        garageWidth,
+        garageHeight,
+        garageType,
+        confidence
+      });
+
+      // Update session with guess and score
+      await updateGameSession(sessionId, {
+        garageCount,
+        garageWidth,
+        garageHeight,
+        garageType,
+        confidence,
+        score: score.points,
+        accuracy: score.accuracy,
+        completed: true,
+        completedAt: new Date()
+      });
+
+      // Update user stats
+      await updateUserStats(req.user.userId, score.points, score.accuracy);
+
+      res.json({
+        success: true,
+        data: {
+          score: score.points,
+          accuracy: score.accuracy,
+          feedback: score.feedback,
+          correctAnswer: score.correctAnswer,
+          breakdown: score.breakdown
+        }
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// @desc    Get current game session
+// @route   GET /api/game/session/:id
+// @access  Private
+router.get('/session/:id',
+  authenticate,
+  auditDataAccess('game', 'view_session'),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      if (!req.user) {
+        return next(createError('User not found in request', 401));
+      }
+
+      const sessionId = parseInt(req.params.id || '0');
+      const session = await getGameSession(sessionId, req.user.userId);
+
+      if (!session) {
+        return next(createError('Game session not found or access denied', 404));
+      }
+
+      res.json({
+        success: true,
+        data: {
+          session
+        }
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// @desc    Get user's game history
+// @route   GET /api/game/history
+// @access  Private
+router.get('/history',
+  authenticate,
+  auditDataAccess('game', 'view_history'),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      if (!req.user) {
+        return next(createError('User not found in request', 401));
+      }
+
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
+
+      const history = await getUserGameHistory(req.user.userId, page, limit);
+
+      res.json({
+        success: true,
+        data: {
+          games: history.games,
+          pagination: {
+            page,
+            limit,
+            total: history.total,
+            pages: Math.ceil(history.total / limit)
+          }
         }
       });
 

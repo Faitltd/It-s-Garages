@@ -80,6 +80,10 @@ export const initializeDatabase = (): Promise<void> => {
           is_correct BOOLEAN DEFAULT 0,
           points_earned INTEGER DEFAULT 0,
           time_taken INTEGER,
+          difficulty VARCHAR(20) DEFAULT 'medium',
+          location_lat REAL,
+          location_lng REAL,
+          location_address TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (user_id) REFERENCES users (id),
           FOREIGN KEY (job_id) REFERENCES jobs (id)
