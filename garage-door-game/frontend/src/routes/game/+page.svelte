@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
-	import { getApiBase } from '$lib/config';
 
 	interface GameSession {
 		sessionId: number;
@@ -93,7 +92,7 @@
 	// Results
 	let scoreResult: ScoreResult | null = null;
 
-	const API_BASE = getApiBase();
+	const API_BASE = 'https://garage-door-backend-341270520862.us-central1.run.app/api';
 
 	// Get auth token from localStorage
 	function getAuthToken(): string | null {

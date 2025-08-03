@@ -12,7 +12,7 @@
 	let username = '';
 	let confirmPassword = '';
 
-	const API_BASE = 'http://localhost:3001/api';
+	const API_BASE = 'https://garage-door-backend-341270520862.us-central1.run.app/api';
 
 	// Handle login
 	async function handleLogin() {
