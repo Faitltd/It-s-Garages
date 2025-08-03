@@ -1,10 +1,24 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
+
+	let user: any = null;
 	let stats = {
 		totalPlayers: 1247,
 		gamesPlayed: 8934,
 		dataSubmitted: 3421,
 		pointsAwarded: 156789
 	};
+
+	onMount(() => {
+		// Check if user is logged in
+		if (browser) {
+			const userData = localStorage.getItem('user');
+			if (userData) {
+				user = JSON.parse(userData);
+			}
+		}
+	});
 
 	let features = [
 		{
@@ -46,13 +60,29 @@
 				Turn your knowledge of garage doors into points! Identify garage doors from Street View images and help build the world's largest garage door database.
 			</p>
 			<div class="flex flex-col sm:flex-row gap-4 justify-center animate-bounce-in">
-				<a href="/game" class="btn-lg bg-white text-primary-600 hover:bg-gray-100 font-semibold">
-					🎮 Start Playing
-				</a>
-				<a href="/submit" class="btn-lg border-2 border-white text-white hover:bg-white hover:text-primary-600 font-semibold">
-					📊 Submit Data
-				</a>
+				{#if user}
+					<a href="/game" class="btn-lg bg-white text-primary-600 hover:bg-gray-100 font-semibold">
+						🎮 Continue Playing
+					</a>
+					<a href="/submit" class="btn-lg border-2 border-white text-white hover:bg-white hover:text-primary-600 font-semibold">
+						📊 Submit Data
+					</a>
+				{:else}
+					<a href="/login" class="btn-lg bg-white text-primary-600 hover:bg-gray-100 font-semibold">
+						🎮 Start Playing
+					</a>
+					<a href="/leaderboard" class="btn-lg border-2 border-white text-white hover:bg-white hover:text-primary-600 font-semibold">
+						🏆 View Leaderboard
+					</a>
+				{/if}
 			</div>
+
+			{#if user}
+				<div class="mt-6 text-primary-100">
+					Welcome back, <span class="font-semibold">{user.username}</span>!
+					Ready for another challenge?
+				</div>
+			{/if}
 		</div>
 	</div>
 </section>

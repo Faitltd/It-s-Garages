@@ -2,9 +2,12 @@
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/stores';
+	import { browser } from '$app/environment';
+	import { goto } from '$app/navigation';
 
 	let { children } = $props();
 	let isMenuOpen = $state(false);
+	let user = $state<any>(null);
 
 	function toggleMenu() {
 		isMenuOpen = !isMenuOpen;
@@ -14,11 +17,34 @@
 		isMenuOpen = false;
 	}
 
-	// Close menu when route changes
+	// Check authentication status
+	function checkAuth() {
+		if (!browser) return;
+
+		const token = localStorage.getItem('authToken');
+		const userData = localStorage.getItem('user');
+
+		if (token && userData) {
+			user = JSON.parse(userData);
+		}
+	}
+
+	// Logout function
+	function logout() {
+		if (!browser) return;
+
+		localStorage.removeItem('authToken');
+		localStorage.removeItem('user');
+		user = null;
+		goto('/login');
+	}
+
+	// Close menu when route changes and check auth
 	$effect(() => {
 		if ($page.url.pathname) {
 			isMenuOpen = false;
 		}
+		checkAuth();
 	});
 </script>
 
@@ -46,28 +72,42 @@
 					<a href="/" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
 						Home
 					</a>
-					<a href="/game" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-						Play Game
-					</a>
-					<a href="/submit" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-						Submit Data
-					</a>
-					<a href="/leaderboard" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-						Leaderboard
-					</a>
-					<a href="/profile" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-						Profile
-					</a>
+					{#if user}
+						<a href="/game" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
+							🎮 Play Game
+						</a>
+						<a href="/submit" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
+							📝 Submit Data
+						</a>
+						<a href="/leaderboard" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
+							🏆 Leaderboard
+						</a>
+						<a href="/profile" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
+							👤 Profile
+						</a>
 
-					<!-- Auth buttons -->
-					<div class="flex items-center space-x-4">
-						<a href="/login" class="btn-outline">
-							Login
+						<!-- User info and logout -->
+						<div class="flex items-center space-x-4">
+							<span class="text-sm text-gray-600">Welcome, {user.username}!</span>
+							<button onclick={logout} class="btn-outline text-sm py-1 px-3">
+								Logout
+							</button>
+						</div>
+					{:else}
+						<a href="/leaderboard" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
+							🏆 Leaderboard
 						</a>
-						<a href="/register" class="btn-primary">
-							Sign Up
-						</a>
-					</div>
+
+						<!-- Auth buttons -->
+						<div class="flex items-center space-x-4">
+							<a href="/login" class="btn-outline">
+								Login
+							</a>
+							<a href="/login" class="btn-primary">
+								Sign Up
+							</a>
+						</div>
+					{/if}
 				</div>
 
 				<!-- Mobile menu button -->
@@ -96,28 +136,42 @@
 					<a href="/" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
 						Home
 					</a>
-					<a href="/game" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-						Play Game
-					</a>
-					<a href="/submit" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-						Submit Data
-					</a>
-					<a href="/leaderboard" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-						Leaderboard
-					</a>
-					<a href="/profile" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-						Profile
-					</a>
+					{#if user}
+						<a href="/game" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
+							🎮 Play Game
+						</a>
+						<a href="/submit" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
+							📝 Submit Data
+						</a>
+						<a href="/leaderboard" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
+							🏆 Leaderboard
+						</a>
+						<a href="/profile" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
+							👤 Profile
+						</a>
 
-					<!-- Mobile auth buttons -->
-					<div class="pt-4 pb-2 border-t border-gray-200 space-y-2">
-						<a href="/login" onclick={closeMenu} class="block w-full text-center btn-outline">
-							Login
+						<!-- Mobile user info and logout -->
+						<div class="pt-4 pb-2 border-t border-gray-200 space-y-2">
+							<div class="px-3 py-2 text-sm text-gray-600">Welcome, {user.username}!</div>
+							<button onclick={() => { logout(); closeMenu(); }} class="block w-full text-center btn-outline">
+								Logout
+							</button>
+						</div>
+					{:else}
+						<a href="/leaderboard" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
+							🏆 Leaderboard
 						</a>
-						<a href="/register" onclick={closeMenu} class="block w-full text-center btn-primary">
-							Sign Up
-						</a>
-					</div>
+
+						<!-- Mobile auth buttons -->
+						<div class="pt-4 pb-2 border-t border-gray-200 space-y-2">
+							<a href="/login" onclick={closeMenu} class="block w-full text-center btn-outline">
+								Login
+							</a>
+							<a href="/login" onclick={closeMenu} class="block w-full text-center btn-primary">
+								Sign Up
+							</a>
+						</div>
+					{/if}
 				</div>
 			</div>
 		{/if}
