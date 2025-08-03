@@ -16,28 +16,17 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Production stage
-FROM node:18-alpine
-
-# Set working directory
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install only production dependencies
-RUN npm ci --only=production
+# Production stage - Use nginx to serve static files
+FROM nginx:alpine
 
 # Copy built application from builder stage
-COPY --from=builder /app/build ./build
-COPY --from=builder /app/package.json ./
+COPY --from=builder /app/build /usr/share/nginx/html
 
-# Expose port
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Expose port 8080 (Cloud Run requirement)
 EXPOSE 8080
 
-# Set environment variables for Cloud Run
-ENV NODE_ENV=production
-ENV PORT=8080
-
-# Start the application
-CMD ["node", "build"]
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

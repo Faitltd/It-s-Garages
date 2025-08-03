@@ -6,7 +6,7 @@
 set -e
 
 # Configuration
-PROJECT_ID="your-gcp-project-id"
+PROJECT_ID="its-garages"
 REGION="us-central1"
 BACKEND_SERVICE="garage-door-backend"
 FRONTEND_SERVICE="garage-door-frontend"
