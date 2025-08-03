@@ -20,28 +20,7 @@
 		}
 	});
 
-	let features = [
-		{
-			icon: '🎮',
-			title: 'Play & Earn',
-			description: 'Guess garage door details from Street View images and earn points for correct answers.'
-		},
-		{
-			icon: '📊',
-			title: 'Submit Data',
-			description: 'Upload photos and details of garage doors you encounter to help build our database.'
-		},
-		{
-			icon: '🏆',
-			title: 'Compete',
-			description: 'Climb the leaderboard and compete with other players for the top spot.'
-		},
-		{
-			icon: '💰',
-			title: 'Rewards',
-			description: 'Earn points for accurate guesses and valuable data submissions.'
-		}
-	];
+
 </script>
 
 <svelte:head>
@@ -50,44 +29,44 @@
 </svelte:head>
 
 <!-- Hero Section -->
-<section class="py-20">
-	<div class="max-w-4xl mx-auto px-4">
+<section class="py-8 px-4">
+	<div class="max-w-md mx-auto">
 		<div class="text-center">
-			<div class="text-box power-up mb-8">
-				<h1 class="text-3xl md:text-4xl mb-6">
+			<div class="text-box power-up mb-6">
+				<h1 class="text-xl mb-4">
 					🏠 GARAGE DOOR QUEST 🏠
 				</h1>
-				<p class="mb-6">
+				<p class="text-lg mb-4">
 					Who Is The Best Tech?
 				</p>
-				<div class="flex justify-center mb-4">
+				<div class="flex justify-center mb-2">
 					<div class="coin"></div>
 					<div class="coin"></div>
 					<div class="coin"></div>
 				</div>
 			</div>
 
-			<div class="flex flex-col sm:flex-row gap-4 justify-center">
+			<div class="space-y-4">
 				{#if user}
-					<a href="/game" class="btn-retro btn-success btn-lg">
+					<a href="/game" class="btn-retro btn-success text-lg font-bold w-full block">
 						🎮 CONTINUE QUEST
 					</a>
-					<a href="/submit" class="btn-retro btn-warning btn-lg">
+					<a href="/submit" class="btn-retro btn-warning w-full block">
 						📊 SUBMIT DATA
 					</a>
 				{:else}
-					<a href="/login" class="btn-retro btn-primary btn-lg">
+					<a href="/login" class="btn-retro btn-primary text-lg font-bold w-full block">
 						🎮 START QUEST
 					</a>
-					<a href="/leaderboard" class="btn-retro btn-outline btn-lg">
+					<a href="/leaderboard" class="btn-retro btn-outline w-full block">
 						🏆 HIGH SCORES
 					</a>
 				{/if}
 			</div>
 
 			{#if user}
-				<div class="text-box mt-6">
-					<p class="text-yellow-300">
+				<div class="text-box mt-4">
+					<p class="text-yellow-300 text-sm">
 						Welcome back, <span class="text-white font-bold">{user.username}</span>!<br>
 						Ready for another challenge?
 					</p>
@@ -98,66 +77,59 @@
 </section>
 
 <!-- Stats Section -->
-<section class="py-16">
-	<div class="max-w-6xl mx-auto px-4">
-		<div class="text-box mb-8">
-			<h2 class="text-2xl text-center mb-6">🏆 GLOBAL STATS 🏆</h2>
+<section class="py-8 px-4">
+	<div class="max-w-md mx-auto">
+		<div class="text-box mb-4">
+			<h2 class="text-lg mb-4">🏆 GLOBAL STATS 🏆</h2>
 		</div>
 
-		<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+		<div class="space-y-3">
 			<div class="score-display power-up">
-				<div class="score-number text-lg">
-					{stats.totalPlayers.toLocaleString()}
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-3">
+						<div class="text-2xl">👥</div>
+						<div class="text-white text-sm">PLAYERS</div>
+					</div>
+					<div class="score-number text-lg">
+						{stats.totalPlayers.toLocaleString()}
+					</div>
 				</div>
-				<div class="text-white text-sm">PLAYERS</div>
-				<div class="text-2xl">👥</div>
 			</div>
 			<div class="score-display power-up">
-				<div class="score-number text-lg">
-					{stats.gamesPlayed.toLocaleString()}
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-3">
+						<div class="text-2xl">🎮</div>
+						<div class="text-white text-sm">GAMES</div>
+					</div>
+					<div class="score-number text-lg">
+						{stats.gamesPlayed.toLocaleString()}
+					</div>
 				</div>
-				<div class="text-white text-sm">GAMES</div>
-				<div class="text-2xl">🎮</div>
 			</div>
 			<div class="score-display power-up">
-				<div class="score-number text-lg">
-					{stats.dataSubmitted.toLocaleString()}
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-3">
+						<div class="text-2xl">📊</div>
+						<div class="text-white text-sm">DATA</div>
+					</div>
+					<div class="score-number text-lg">
+						{stats.dataSubmitted.toLocaleString()}
+					</div>
 				</div>
-				<div class="text-white text-sm">DATA</div>
-				<div class="text-2xl">📊</div>
 			</div>
 			<div class="score-display power-up">
-				<div class="score-number text-lg">
-					{stats.pointsAwarded.toLocaleString()}
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-3">
+						<div class="coin"></div>
+						<div class="text-white text-sm">COINS</div>
+					</div>
+					<div class="score-number text-lg">
+						{stats.pointsAwarded.toLocaleString()}
+					</div>
 				</div>
-				<div class="text-white text-sm">COINS</div>
-				<div class="coin"></div>
 			</div>
 		</div>
 	</div>
 </section>
 
-<!-- Features Section -->
-<section class="py-20">
-	<div class="max-w-6xl mx-auto px-4">
-		<div class="text-box mb-8">
-			<h2 class="text-2xl text-center mb-4">
-				⚡ HOW IT WORKS ⚡
-			</h2>
-			<p class="text-center">
-				Join thousands of players in building the most comprehensive<br>
-				garage door database while having fun and earning coins!
-			</p>
-		</div>
 
-		<div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-			{#each features as feature, index}
-				<div class="text-box power-up text-center" style="animation-delay: {index * 0.2}s">
-					<div class="text-4xl mb-4">{feature.icon}</div>
-					<h3 class="text-lg text-yellow-300 mb-3">{feature.title}</h3>
-					<p class="text-white text-sm">{feature.description}</p>
-				</div>
-			{/each}
-		</div>
-	</div>
-</section>

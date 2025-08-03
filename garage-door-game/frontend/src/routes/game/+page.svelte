@@ -340,8 +340,8 @@
 	<title>Play Game - Garage Door Game</title>
 </svelte:head>
 
-<div class="min-h-screen py-8">
-	<div class="max-w-6xl mx-auto px-4">
+<div class="min-h-screen py-4 px-2">
+	<div class="max-w-md mx-auto">
 		<!-- Login Section (always visible at top) -->
 		{#if showLogin}
 			<div class="text-box mb-6">
@@ -612,10 +612,10 @@
 						</div>
 					</div>
 
-					<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+					<div class="space-y-4">
 						<!-- Street View Image -->
 						<div class="text-box p-2">
-							<div class="aspect-square border-4 border-white">
+							<div class="aspect-square border-4 border-white max-w-sm mx-auto">
 								<img
 									src={gameSession.streetViewUrl}
 									alt="Street View"
@@ -626,7 +626,6 @@
 						</div>
 
 						<!-- Game Questions -->
-						<div class="space-y-4">
 							<!-- Question 1: Garage Count -->
 							<div class="text-box">
 								<h3 class="text-lg mb-4 text-center">🚪 HOW MANY GARAGE DOORS?</h3>
@@ -716,7 +715,6 @@
 								</button>
 							</div>
 						</div>
-					</div>
 				{:else}
 					<!-- Loading new game -->
 					<div class="text-box text-center">

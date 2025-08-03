@@ -39,14 +39,17 @@ body::before {
   100% { transform: translateX(calc(100vw + 100px)); }
 }
 
-/* Mario-style Text Boxes */
+/* Mario-style Text Boxes - Mobile First */
 .text-box {
   background: linear-gradient(45deg, #228B22, #006400);
   border: 4px solid #fff;
   border-radius: 0;
-  padding: 20px;
-  margin: 16px auto;
-  max-width: 600px;
+  padding: 24px 16px;
+  margin: 12px;
+  width: calc(100% - 24px);
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
   position: relative;
   text-align: center;
   box-shadow:
@@ -54,6 +57,15 @@ body::before {
     inset 4px 4px 0 #32cd32,
     4px 4px 0 #000;
   animation: textBoxPop 0.3s ease-out;
+}
+
+/* Larger text boxes for mobile */
+@media (max-width: 768px) {
+  .text-box {
+    padding: 20px 12px;
+    margin: 8px;
+    font-size: 14px;
+  }
 }
 
 @keyframes textBoxPop {
@@ -76,11 +88,11 @@ body::before {
   font-size: 12px;
 }
 
-/* 16-bit Buttons */
+/* 16-bit Buttons - Mobile Optimized */
 .btn-retro {
   font-family: 'Press Start 2P', monospace;
-  font-size: 12px;
-  padding: 12px 24px;
+  font-size: 14px;
+  padding: 16px 32px;
   border: none;
   border-radius: 0;
   cursor: pointer;
@@ -88,10 +100,27 @@ body::before {
   transition: all 0.1s ease;
   text-transform: uppercase;
   letter-spacing: 1px;
+  min-height: 56px; /* Minimum touch target size */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   box-shadow:
     inset -4px -4px 0 rgba(0,0,0,0.3),
     inset 4px 4px 0 rgba(255,255,255,0.3),
     4px 4px 0 #000;
+}
+
+/* Mobile button adjustments */
+@media (max-width: 768px) {
+  .btn-retro {
+    font-size: 12px;
+    padding: 20px 24px;
+    min-height: 60px;
+    width: 100%;
+    max-width: 320px;
+    margin: 8px auto;
+  }
 }
 
 .btn-retro:hover {
@@ -134,19 +163,18 @@ body::before {
   border: 4px solid #000;
 }
 
-/* Input styles */
+/* Input styles - Mobile First */
 .input-field {
   display: block;
   width: 100%;
-  max-width: 400px;
-  margin: 0 auto;
-  padding: 12px 16px;
+  padding: 16px 20px;
   border: 4px solid #000;
   border-radius: 0;
   background: #fff;
   font-family: 'Press Start 2P', monospace;
-  font-size: 12px;
+  font-size: 14px;
   text-align: center;
+  min-height: 56px;
   box-shadow:
     inset -2px -2px 0 #666,
     inset 2px 2px 0 #fff,
@@ -161,6 +189,15 @@ body::before {
     inset 2px 2px 0 #fff,
     2px 2px 0 #000,
     0 0 10px #ffd700;
+}
+
+/* Mobile input adjustments */
+@media (max-width: 768px) {
+  .input-field {
+    font-size: 16px; /* Prevents zoom on iOS */
+    padding: 20px;
+    min-height: 60px;
+  }
 }
 
 /* Form containers */
@@ -186,26 +223,52 @@ body::before {
   text-shadow: 2px 2px 0 #000;
 }
 
-/* Multiple Choice Options */
+/* Multiple Choice Options - Mobile First */
 .choice-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin: 20px 0;
-  max-width: 800px;
-  margin-left: auto;
-  margin-right: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
+  width: 100%;
+}
+
+/* Desktop: Show in grid */
+@media (min-width: 768px) {
+  .choice-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 .choice-option {
   background: linear-gradient(45deg, #fff, #f0f0f0);
   border: 4px solid #000;
-  padding: 16px;
+  padding: 20px 16px;
   cursor: pointer;
   transition: all 0.1s ease;
   position: relative;
   text-align: center;
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
   box-shadow: 4px 4px 0 #000;
+}
+
+/* Mobile choice options */
+@media (max-width: 768px) {
+  .choice-option {
+    padding: 24px 16px;
+    min-height: 70px;
+    font-size: 16px;
+  }
 }
 
 .choice-option:hover {
