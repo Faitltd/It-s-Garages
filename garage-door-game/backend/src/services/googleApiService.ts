@@ -128,7 +128,8 @@ class GoogleApiService {
 
     // If no valid API key, return a placeholder image
     if (!apiKey || apiKey === 'placeholder-key') {
-      return `https://via.placeholder.com/640x640/228B22/FFFFFF?text=GARAGE+DOOR+DEMO`;
+      // Return a data URL with a simple green placeholder
+      return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQwIiBoZWlnaHQ9IjY0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMjI4QjIyIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI0NSUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzNiIgZmlsbD0iI0ZGRkZGRiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R0FSQUdFIERPT1I8L3RleHQ+CiAgPHRleHQgeD0iNTAlIiB5PSI1NSUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzNiIgZmlsbD0iI0ZGRkZGRiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+REVNTZM8L3RleHQ+Cjwvc3ZnPg==';
     }
 
     const baseUrl = 'https://maps.googleapis.com/maps/api/streetview';

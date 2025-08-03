@@ -615,12 +615,16 @@
 					<div class="space-y-4">
 						<!-- Street View Image -->
 						<div class="text-box p-2">
-							<div class="aspect-square border-4 border-white max-w-sm mx-auto">
+							<div class="aspect-square border-4 border-white max-w-sm mx-auto bg-green-600 flex items-center justify-center">
 								<img
 									src={gameSession.streetViewUrl}
 									alt="Street View"
 									class="w-full h-full object-cover"
-									on:error={() => error = 'Failed to load Street View image'}
+									on:error={(e) => {
+										// Hide the broken image and show fallback
+										e.target.style.display = 'none';
+										e.target.parentElement.innerHTML = '<div class="text-white text-center p-8"><div class="text-4xl mb-4">🏠</div><div class="text-lg font-bold">GARAGE DOOR</div><div class="text-sm">DEMO IMAGE</div></div>';
+									}}
 								/>
 							</div>
 						</div>
