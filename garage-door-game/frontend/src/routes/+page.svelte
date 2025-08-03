@@ -50,37 +50,47 @@
 </svelte:head>
 
 <!-- Hero Section -->
-<section class="bg-gradient-to-br from-primary-600 to-primary-800 text-white">
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+<section class="py-20">
+	<div class="max-w-4xl mx-auto px-4">
 		<div class="text-center">
-			<h1 class="text-4xl md:text-6xl font-bold mb-6 animate-fade-in">
-				🏠 Garage Door Game
-			</h1>
-			<p class="text-xl md:text-2xl mb-8 text-primary-100 max-w-3xl mx-auto animate-slide-up">
-				Turn your knowledge of garage doors into points! Identify garage doors from Street View images and help build the world's largest garage door database.
-			</p>
-			<div class="flex flex-col sm:flex-row gap-4 justify-center animate-bounce-in">
+			<div class="text-box power-up mb-8">
+				<h1 class="text-3xl md:text-4xl mb-6">
+					🏠 GARAGE DOOR QUEST 🏠
+				</h1>
+				<p class="mb-6">
+					Who Is The Best Tech?
+				</p>
+				<div class="flex justify-center mb-4">
+					<div class="coin"></div>
+					<div class="coin"></div>
+					<div class="coin"></div>
+				</div>
+			</div>
+
+			<div class="flex flex-col sm:flex-row gap-4 justify-center">
 				{#if user}
-					<a href="/game" class="btn-lg bg-white text-primary-600 hover:bg-gray-100 font-semibold">
-						🎮 Continue Playing
+					<a href="/game" class="btn-retro btn-success btn-lg">
+						🎮 CONTINUE QUEST
 					</a>
-					<a href="/submit" class="btn-lg border-2 border-white text-white hover:bg-white hover:text-primary-600 font-semibold">
-						📊 Submit Data
+					<a href="/submit" class="btn-retro btn-warning btn-lg">
+						📊 SUBMIT DATA
 					</a>
 				{:else}
-					<a href="/login" class="btn-lg bg-white text-primary-600 hover:bg-gray-100 font-semibold">
-						🎮 Start Playing
+					<a href="/login" class="btn-retro btn-primary btn-lg">
+						🎮 START QUEST
 					</a>
-					<a href="/leaderboard" class="btn-lg border-2 border-white text-white hover:bg-white hover:text-primary-600 font-semibold">
-						🏆 View Leaderboard
+					<a href="/leaderboard" class="btn-retro btn-outline btn-lg">
+						🏆 HIGH SCORES
 					</a>
 				{/if}
 			</div>
 
 			{#if user}
-				<div class="mt-6 text-primary-100">
-					Welcome back, <span class="font-semibold">{user.username}</span>!
-					Ready for another challenge?
+				<div class="text-box mt-6">
+					<p class="text-yellow-300">
+						Welcome back, <span class="text-white font-bold">{user.username}</span>!<br>
+						Ready for another challenge?
+					</p>
 				</div>
 			{/if}
 		</div>
@@ -88,55 +98,64 @@
 </section>
 
 <!-- Stats Section -->
-<section class="py-16 bg-white">
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-		<div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-			<div class="animate-fade-in">
-				<div class="text-3xl md:text-4xl font-bold text-primary-600 mb-2">
+<section class="py-16">
+	<div class="max-w-6xl mx-auto px-4">
+		<div class="text-box mb-8">
+			<h2 class="text-2xl text-center mb-6">🏆 GLOBAL STATS 🏆</h2>
+		</div>
+
+		<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+			<div class="score-display power-up">
+				<div class="score-number text-lg">
 					{stats.totalPlayers.toLocaleString()}
 				</div>
-				<div class="text-gray-600 font-medium">Players</div>
+				<div class="text-white text-sm">PLAYERS</div>
+				<div class="text-2xl">👥</div>
 			</div>
-			<div class="animate-fade-in">
-				<div class="text-3xl md:text-4xl font-bold text-success-600 mb-2">
+			<div class="score-display power-up">
+				<div class="score-number text-lg">
 					{stats.gamesPlayed.toLocaleString()}
 				</div>
-				<div class="text-gray-600 font-medium">Games Played</div>
+				<div class="text-white text-sm">GAMES</div>
+				<div class="text-2xl">🎮</div>
 			</div>
-			<div class="animate-fade-in">
-				<div class="text-3xl md:text-4xl font-bold text-warning-600 mb-2">
+			<div class="score-display power-up">
+				<div class="score-number text-lg">
 					{stats.dataSubmitted.toLocaleString()}
 				</div>
-				<div class="text-gray-600 font-medium">Data Submitted</div>
+				<div class="text-white text-sm">DATA</div>
+				<div class="text-2xl">📊</div>
 			</div>
-			<div class="animate-fade-in">
-				<div class="text-3xl md:text-4xl font-bold text-danger-600 mb-2">
+			<div class="score-display power-up">
+				<div class="score-number text-lg">
 					{stats.pointsAwarded.toLocaleString()}
 				</div>
-				<div class="text-gray-600 font-medium">Points Awarded</div>
+				<div class="text-white text-sm">COINS</div>
+				<div class="coin"></div>
 			</div>
 		</div>
 	</div>
 </section>
 
 <!-- Features Section -->
-<section class="py-20 bg-gray-50">
-	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-		<div class="text-center mb-16">
-			<h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-				How It Works
+<section class="py-20">
+	<div class="max-w-6xl mx-auto px-4">
+		<div class="text-box mb-8">
+			<h2 class="text-2xl text-center mb-4">
+				⚡ HOW IT WORKS ⚡
 			</h2>
-			<p class="text-xl text-gray-600 max-w-2xl mx-auto">
-				Join thousands of players in building the most comprehensive garage door database while having fun and earning rewards.
+			<p class="text-center">
+				Join thousands of players in building the most comprehensive<br>
+				garage door database while having fun and earning coins!
 			</p>
 		</div>
 
-		<div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+		<div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
 			{#each features as feature, index}
-				<div class="card text-center hover:shadow-lg transition-shadow duration-300 animate-slide-up" style="animation-delay: {index * 0.1}s">
+				<div class="text-box power-up text-center" style="animation-delay: {index * 0.2}s">
 					<div class="text-4xl mb-4">{feature.icon}</div>
-					<h3 class="text-xl font-semibold text-gray-900 mb-3">{feature.title}</h3>
-					<p class="text-gray-600">{feature.description}</p>
+					<h3 class="text-lg text-yellow-300 mb-3">{feature.title}</h3>
+					<p class="text-white text-sm">{feature.description}</p>
 				</div>
 			{/each}
 		</div>

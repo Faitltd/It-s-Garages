@@ -122,18 +122,16 @@
 	<title>{isLogin ? 'Login' : 'Register'} - Garage Door Game</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-	<div class="sm:mx-auto sm:w-full sm:max-w-md">
-		<div class="text-center">
-			<h1 class="text-4xl font-bold text-gray-900 mb-2">🏠 Garage Door Game</h1>
-			<h2 class="text-2xl font-semibold text-gray-700">
-				{isLogin ? 'Sign in to your account' : 'Create your account'}
+<div class="min-h-screen flex flex-col justify-center py-12 px-4">
+	<div class="max-w-md mx-auto w-full">
+		<div class="text-box power-up mb-6">
+			<h1 class="text-2xl mb-4">🏠 GARAGE DOOR QUEST 🏠</h1>
+			<h2 class="text-lg">
+				{isLogin ? '🎮 PLAYER LOGIN 🎮' : '⭐ JOIN THE QUEST ⭐'}
 			</h2>
 		</div>
-	</div>
 
-	<div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-		<div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+		<div class="text-box">
 			<form on:submit|preventDefault={handleSubmit} class="space-y-6">
 				{#if !isLogin}
 					<!-- Username field for registration -->
@@ -213,8 +211,9 @@
 
 				<!-- Error message -->
 				{#if error}
-					<div class="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-						{error}
+					<div class="text-box text-center" style="background: linear-gradient(45deg, #dc2626, #991b1b);">
+						<div class="text-yellow-300">💥 ERROR 💥</div>
+						<div class="text-white mt-2">{error}</div>
 					</div>
 				{/if}
 
@@ -223,15 +222,15 @@
 					<button
 						type="submit"
 						disabled={loading}
-						class="w-full btn-primary py-3 text-lg font-semibold"
+						class="w-full btn-retro btn-primary"
 					>
 						{#if loading}
 							<div class="flex items-center justify-center">
-								<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-								{isLogin ? 'Signing in...' : 'Creating account...'}
+								<div class="coin mr-2"></div>
+								{isLogin ? 'LOGGING IN...' : 'CREATING PLAYER...'}
 							</div>
 						{:else}
-							{isLogin ? '🔐 Sign In' : '🎮 Create Account & Play'}
+							{isLogin ? '🔐 LOGIN' : '🎮 CREATE PLAYER'}
 						{/if}
 					</button>
 				</div>
@@ -242,11 +241,11 @@
 				<button
 					type="button"
 					on:click={toggleMode}
-					class="text-primary-600 hover:text-primary-500 font-medium"
+					class="btn-retro btn-outline"
 				>
-					{isLogin 
-						? "Don't have an account? Sign up" 
-						: 'Already have an account? Sign in'}
+					{isLogin
+						? "🆕 CREATE ACCOUNT"
+						: '🔐 LOGIN INSTEAD'}
 				</button>
 			</div>
 
