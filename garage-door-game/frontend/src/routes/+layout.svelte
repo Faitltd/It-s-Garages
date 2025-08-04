@@ -86,6 +86,9 @@
 						<a href="/leaderboard" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
 							🏆 Leaderboard
 						</a>
+						<a href="/data-dashboard" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
+							📊 Data Dashboard
+						</a>
 						<a href="/achievements" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
 							🏅 Achievements
 						</a>

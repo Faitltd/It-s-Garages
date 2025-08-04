@@ -428,4 +428,91 @@ async function verifyDataEntry(id: number, verifierId: number, verified: boolean
   });
 }
 
+/**
+ * Export all garage door data for ML training
+ */
+router.get('/export',
+  authenticate,
+  auditDataAccess('data_entry', 'export'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      // Get all data entries with user information
+      const query = `
+        SELECT
+          de.id,
+          de.address,
+          de.latitude,
+          de.longitude,
+          de.street_view_url,
+          de.garage_door_count,
+          de.garage_door_width,
+          de.garage_door_height,
+          de.garage_door_type,
+          de.garage_door_material,
+          de.notes,
+          de.confidence_level,
+          de.created_at,
+          u.username,
+          u.email,
+          -- Validation game results for this entry
+          COUNT(vgr.id) as validation_count,
+          AVG(vgr.accuracy) as avg_validation_accuracy,
+          AVG(vgr.points_earned) as avg_points_earned
+        FROM data_entries de
+        LEFT JOIN users u ON de.user_id = u.id
+        LEFT JOIN validation_game_results vgr ON de.id = vgr.data_entry_id
+        GROUP BY de.id
+        ORDER BY de.created_at DESC
+      `;
+
+      const entries = await new Promise<any[]>((resolve, reject) => {
+        db.all(query, [], (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        });
+      });
+
+      // Get summary statistics
+      const statsQuery = `
+        SELECT
+          COUNT(*) as total_entries,
+          COUNT(DISTINCT user_id) as unique_contributors,
+          AVG(garage_door_count) as avg_door_count,
+          AVG(garage_door_width) as avg_door_width,
+          AVG(garage_door_height) as avg_door_height,
+          AVG(confidence_level) as avg_confidence,
+          MIN(created_at) as first_entry,
+          MAX(created_at) as latest_entry
+        FROM data_entries
+      `;
+
+      const stats = await new Promise<any>((resolve, reject) => {
+        db.get(statsQuery, [], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+
+      res.json({
+        success: true,
+        data: {
+          entries: entries,
+          statistics: stats,
+          export_timestamp: new Date().toISOString(),
+          total_count: entries.length
+        }
+      });
+
+    } catch (error) {
+      console.error('Data export error:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to export data'
+        }
+      });
+    }
+  }
+);
+
 export default router;
