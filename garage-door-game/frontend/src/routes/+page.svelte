@@ -7,7 +7,10 @@
 		totalPlayers: 1247,
 		gamesPlayed: 8934,
 		dataSubmitted: 3421,
-		pointsAwarded: 156789
+		pointsAwarded: 156789,
+		averageAccuracy: 78.5,
+		topPlayer: 'GarageMaster2024',
+		recentAchievements: 42
 	};
 
 	onMount(() => {
@@ -48,11 +51,14 @@
 
 			<div class="space-y-4">
 				{#if user}
-					<a href="/game" class="btn-retro btn-success text-lg font-bold w-full block">
-						🎮 CONTINUE QUEST
+					<a href="/data-entry" class="btn-retro btn-success text-lg font-bold w-full block">
+						📝 SUBMIT DATA
 					</a>
-					<a href="/submit" class="btn-retro btn-warning w-full block">
-						📊 SUBMIT DATA
+					<a href="/validation-game" class="btn-retro btn-warning w-full block">
+						🎮 VALIDATION GAME
+					</a>
+					<a href="/submit" class="btn-retro btn-outline w-full block">
+						📊 OLD SUBMIT
 					</a>
 				{:else}
 					<a href="/login" class="btn-retro btn-primary text-lg font-bold w-full block">
@@ -128,8 +134,65 @@
 					</div>
 				</div>
 			</div>
+			<!-- Additional Stats -->
+			<div class="space-y-3 mt-4">
+				<div class="score-display">
+					<div class="flex items-center justify-between">
+						<div class="flex items-center gap-3">
+							<div class="text-2xl">🎯</div>
+							<div class="text-white text-sm">ACCURACY</div>
+						</div>
+						<div class="score-number text-lg">
+							{stats.averageAccuracy}%
+						</div>
+					</div>
+				</div>
+				<div class="score-display">
+					<div class="flex items-center justify-between">
+						<div class="flex items-center gap-3">
+							<div class="text-2xl">👑</div>
+							<div class="text-white text-sm">TOP PLAYER</div>
+						</div>
+						<div class="score-number text-sm">
+							{stats.topPlayer}
+						</div>
+					</div>
+				</div>
+				<div class="score-display">
+					<div class="flex items-center justify-between">
+						<div class="flex items-center gap-3">
+							<div class="text-2xl">🏅</div>
+							<div class="text-white text-sm">ACHIEVEMENTS</div>
+						</div>
+						<div class="score-number text-lg">
+							{stats.recentAchievements}
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 </section>
 
+<!-- Quick Links -->
+<section class="py-8 px-4">
+	<div class="max-w-md mx-auto">
+		<div class="text-box mb-4">
+			<h2 class="text-lg mb-4">🚀 QUICK ACCESS 🚀</h2>
+		</div>
 
+		<div class="space-y-3">
+			<a href="/leaderboard" class="btn-retro btn-outline w-full block">
+				🏆 VIEW LEADERBOARD
+			</a>
+			<a href="/achievements" class="btn-retro btn-outline w-full block">
+				🏅 CHECK ACHIEVEMENTS
+			</a>
+			{#if user}
+				<a href="/profile" class="btn-retro btn-outline w-full block">
+					👤 MY PROFILE
+				</a>
+			{/if}
+		</div>
+	</div>
+</section>

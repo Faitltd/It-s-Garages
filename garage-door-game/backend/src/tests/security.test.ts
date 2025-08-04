@@ -1,20 +1,11 @@
 import request from 'supertest';
-import express from 'express';
 import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
-import { initializeDatabase } from '../config/database';
+import { createApp } from '../app';
+import './setup';
 
-// Import the app setup (we'll need to refactor server.ts to export the app)
-const app = express();
-
-// Mock environment variables for testing
-process.env.JWT_SECRET = 'test-secret-key-for-testing-only';
-process.env.NODE_ENV = 'test';
-process.env.DATABASE_PATH = ':memory:'; // Use in-memory database for tests
+const app = createApp();
 
 describe('Security Tests', () => {
-  beforeAll(async () => {
-    await initializeDatabase();
-  });
 
   describe('Authentication Security', () => {
     test('should reject registration with weak password', async () => {

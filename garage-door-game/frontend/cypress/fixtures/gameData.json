@@ -1,0 +1,61 @@
+{
+  "gameSession": {
+    "sessionId": "test-session-123",
+    "imageUrl": "https://example.com/test-image.jpg",
+    "difficulty": "medium",
+    "timeLimit": 30,
+    "startTime": "2025-08-04T12:00:00Z"
+  },
+  "gameGuess": {
+    "garageCount": 2,
+    "garageWidth": 8,
+    "garageHeight": 7,
+    "garageType": "residential",
+    "confidence": 85
+  },
+  "gameResult": {
+    "score": 85,
+    "accuracy": 90,
+    "pointsEarned": 100,
+    "correctAnswer": {
+      "garageCount": 2,
+      "garageWidth": 8,
+      "garageHeight": 7,
+      "garageType": "residential"
+    }
+  },
+  "difficulties": [
+    {
+      "name": "easy",
+      "timeLimit": 60,
+      "pointMultiplier": 1.0
+    },
+    {
+      "name": "medium",
+      "timeLimit": 30,
+      "pointMultiplier": 1.5
+    },
+    {
+      "name": "hard",
+      "timeLimit": 15,
+      "pointMultiplier": 2.0
+    }
+  ],
+  "mockAddresses": [
+    {
+      "lat": 37.7749,
+      "lng": -122.4194,
+      "address": "123 Test Street, San Francisco, CA"
+    },
+    {
+      "lat": 40.7128,
+      "lng": -74.0060,
+      "address": "456 Demo Avenue, New York, NY"
+    },
+    {
+      "lat": 34.0522,
+      "lng": -118.2437,
+      "address": "789 Sample Road, Los Angeles, CA"
+    }
+  ]
+}

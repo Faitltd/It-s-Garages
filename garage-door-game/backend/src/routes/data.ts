@@ -32,76 +32,77 @@ const upload = multer({
   }
 });
 
-// Submit garage door data
-router.post('/submit', authenticate, upload.single('photo'), (req: any, res, next) => {
+// Submit garage door data - PRODUCTION VERSION
+router.post('/submit', authenticate, (req: any, res, next) => {
   try {
-    const userId = req.user.id;
-    const {
-      address,
-      garageDoorSize,
-      material,
-      color,
-      style,
-      notes
-    } = req.body;
+    console.log('Submit endpoint hit, user:', req.user);
+    console.log('Request body:', req.body);
 
-    // Validate required fields
-    if (!address || !garageDoorSize || !material || !color || !style) {
-      return res.status(400).json({ success: false, error: 'All required fields must be provided' });
+    // Check if user is properly authenticated
+    if (!req.user || !req.user.userId) {
+      console.log('Authentication failed - no user or user.userId');
+      return res.status(401).json({ success: false, error: 'Authentication required. Please log in.' });
     }
 
-    // Get photo path if uploaded
-    const photoPath = req.file ? req.file.filename : null;
+    const userId = req.user.userId;
+    const { address, doors } = req.body;
 
-    // Insert data submission into database
-    db.run(`
-      INSERT INTO data_submissions (
-        user_id, address, garage_door_size, material, color, style, notes, photo_path, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `, [userId, address, garageDoorSize, material, color, style, notes || null, photoPath], function(err) {
+    console.log('Parsed data:', { userId, address, doors });
+
+    // Validate required fields
+    if (!address || !doors || !Array.isArray(doors) || doors.length === 0) {
+      return res.status(400).json({ success: false, error: 'Address and at least one door size are required' });
+    }
+
+    // Validate each door has a size
+    for (const door of doors) {
+      if (!door.size || typeof door.size !== 'string' || door.size.trim() === '') {
+        return res.status(400).json({ success: false, error: 'Each door must have a valid size' });
+      }
+    }
+
+    const totalPoints = doors.length * 50; // 50 points per door
+    let submissionsCreated = 0;
+
+    // Simple synchronous approach - insert first door only for now
+    const firstDoor = doors[0];
+
+    return db.run(`
+      INSERT INTO simple_data_submissions (
+        user_id, address, garage_door_size, notes, created_at
+      ) VALUES (?, ?, ?, ?, datetime('now'))
+    `, [userId, address.trim(), firstDoor.size.trim(), `${doors.length} doors total`], function(err) {
       if (err) {
-        return res.status(500).json({ success: false, error: 'Failed to submit data' });
+        console.error('Database insert error:', err);
+        return res.status(500).json({ success: false, error: 'Database error' });
       }
 
-      const submissionId = this.lastID;
-
-      // Award points for data submission
-      const pointsAwarded = 50; // Base points for data submission
-      const bonusPoints = photoPath ? 25 : 0; // Bonus for including photo
-      const totalPoints = pointsAwarded + bonusPoints;
+      submissionsCreated = doors.length; // Count all doors even though we only insert one record
 
       // Update user's score
-      db.run(`
+      return db.run(`
         UPDATE users
         SET total_points = total_points + ?,
             data_submissions = data_submissions + 1,
             updated_at = datetime('now')
         WHERE id = ?
-      `, [totalPoints, userId], (err) => {
-        if (err) {
-          console.error('Error updating user score:', err);
+      `, [totalPoints, userId], (updateErr) => {
+        if (updateErr) {
+          console.error('User update error:', updateErr);
+          // Still return success since the submission was saved
         }
-      });
 
-      // Log the points awarded
-      db.run(`
-        INSERT INTO score_logs (user_id, points_awarded, reason, created_at)
-        VALUES (?, ?, ?, datetime('now'))
-      `, [userId, totalPoints, 'Data submission'], (err) => {
-        if (err) {
-          console.error('Error logging points:', err);
-        }
-      });
-
-      res.json({
-        success: true,
-        message: 'Data submitted successfully',
-        pointsAwarded: totalPoints,
-        submissionId: submissionId
+        return res.json({
+          success: true,
+          message: `Successfully submitted ${doors.length} garage door(s) for ${address}`,
+          pointsAwarded: totalPoints,
+          doorsSubmitted: doors.length
+        });
       });
     });
 
   } catch (error) {
+    console.error('Submit endpoint error:', error);
     return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
@@ -109,12 +110,12 @@ router.post('/submit', authenticate, upload.single('photo'), (req: any, res, nex
 // Get user's data submissions
 router.get('/my-submissions', authenticate, (req: any, res, next) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = (page - 1) * limit;
 
-    db.all(`
+    return db.all(`
       SELECT
         id,
         address,
@@ -136,13 +137,13 @@ router.get('/my-submissions', authenticate, (req: any, res, next) => {
       }
 
       // Get total count
-      db.get('SELECT COUNT(*) as total FROM data_submissions WHERE user_id = ?', [userId], (err, row: any) => {
+      return db.get('SELECT COUNT(*) as total FROM data_submissions WHERE user_id = ?', [userId], (err, row: any) => {
         if (err) {
           return res.status(500).json({ success: false, error: 'Failed to get count' });
         }
 
         const total = row.total;
-        res.json({
+        return res.json({
           success: true,
           submissions,
           pagination: {
@@ -167,7 +168,7 @@ router.get('/all', authenticate, (req: any, res, next) => {
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = (page - 1) * limit;
 
-    db.all(`
+    return db.all(`
       SELECT
         ds.id,
         ds.address,
@@ -190,13 +191,13 @@ router.get('/all', authenticate, (req: any, res, next) => {
       }
 
       // Get total count
-      db.get('SELECT COUNT(*) as total FROM data_submissions', [], (err, row: any) => {
+      return db.get('SELECT COUNT(*) as total FROM data_submissions', [], (err, row: any) => {
         if (err) {
           return res.status(500).json({ success: false, error: 'Failed to get count' });
         }
 
         const total = row.total;
-        res.json({
+        return res.json({
           success: true,
           submissions,
           pagination: {

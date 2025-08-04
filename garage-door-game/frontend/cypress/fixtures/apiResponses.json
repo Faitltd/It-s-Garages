@@ -1,0 +1,166 @@
+{
+  "auth": {
+    "loginSuccess": {
+      "success": true,
+      "message": "Login successful",
+      "data": {
+        "user": {
+          "id": 1,
+          "username": "testuser",
+          "email": "test@example.com",
+          "total_points": 0,
+          "games_played": 0,
+          "jobs_submitted": 0,
+          "accuracy_rate": 0,
+          "created_at": "2025-08-04T12:00:00Z",
+          "role": "user"
+        },
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-token"
+      }
+    },
+    "loginError": {
+      "success": false,
+      "error": {
+        "message": "Invalid email or password"
+      }
+    },
+    "registerSuccess": {
+      "success": true,
+      "message": "User registered successfully",
+      "data": {
+        "user": {
+          "id": 1,
+          "username": "testuser",
+          "email": "test@example.com",
+          "total_points": 0,
+          "games_played": 0,
+          "jobs_submitted": 0,
+          "accuracy_rate": 0,
+          "created_at": "2025-08-04T12:00:00Z",
+          "role": "user"
+        },
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-token"
+      }
+    },
+    "registerError": {
+      "success": false,
+      "error": {
+        "message": "Email already exists"
+      }
+    }
+  },
+  "game": {
+    "startSuccess": {
+      "success": true,
+      "data": {
+        "sessionId": "test-session-123",
+        "imageUrl": "https://example.com/test-image.jpg",
+        "difficulty": "medium",
+        "timeLimit": 30,
+        "startTime": "2025-08-04T12:00:00Z"
+      }
+    },
+    "startError": {
+      "success": false,
+      "error": {
+        "message": "Failed to start game"
+      }
+    },
+    "guessSuccess": {
+      "success": true,
+      "data": {
+        "score": 85,
+        "accuracy": 90,
+        "pointsEarned": 100,
+        "correctAnswer": {
+          "garageCount": 2,
+          "garageWidth": 8,
+          "garageHeight": 7,
+          "garageType": "residential"
+        }
+      }
+    },
+    "guessError": {
+      "success": false,
+      "error": {
+        "message": "Invalid game session"
+      }
+    },
+    "historySuccess": {
+      "success": true,
+      "data": {
+        "games": [
+          {
+            "id": 1,
+            "score": 85,
+            "accuracy": 90,
+            "pointsEarned": 100,
+            "difficulty": "medium",
+            "playedAt": "2025-08-04T12:00:00Z"
+          }
+        ],
+        "totalGames": 1,
+        "averageScore": 85
+      }
+    }
+  },
+  "data": {
+    "submitSuccess": {
+      "success": true,
+      "message": "Successfully submitted 2 garage door(s) for 123 Test Street",
+      "pointsAwarded": 100,
+      "doorsSubmitted": 2
+    },
+    "submitError": {
+      "success": false,
+      "error": "Address and at least one door size are required"
+    },
+    "submissionsSuccess": {
+      "success": true,
+      "submissions": [
+        {
+          "id": 1,
+          "address": "123 Test Street",
+          "garage_door_size": "8x7 feet",
+          "created_at": "2025-08-04T12:00:00Z",
+          "status": "approved"
+        }
+      ],
+      "pagination": {
+        "page": 1,
+        "limit": 10,
+        "total": 1,
+        "totalPages": 1
+      }
+    }
+  },
+  "errors": {
+    "networkError": {
+      "message": "Network error. Please try again."
+    },
+    "serverError": {
+      "success": false,
+      "error": {
+        "message": "Internal server error"
+      }
+    },
+    "authError": {
+      "success": false,
+      "error": {
+        "message": "Authentication required. Please log in."
+      }
+    },
+    "validationError": {
+      "success": false,
+      "error": {
+        "message": "Validation failed",
+        "details": [
+          {
+            "field": "email",
+            "message": "Please provide a valid email address"
+          }
+        ]
+      }
+    }
+  }
+}

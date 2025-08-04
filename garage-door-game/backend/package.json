@@ -12,7 +12,9 @@
     "test:coverage": "jest --coverage",
     "test:security": "jest src/tests/security.test.ts",
     "db:init": "node src/scripts/initDatabase.js",
-    "db:seed": "node src/scripts/seedDatabase.js"
+    "db:seed": "node src/scripts/seedDatabase.js",
+    "generate:questions": "ts-node src/scripts/generateQuestions.ts",
+    "generate:questions:prod": "node dist/scripts/generateQuestions.js"
   },
   "keywords": [
     "garage-door",
@@ -41,6 +43,7 @@
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
+    "@cypress/code-coverage": "^3.14.5",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
@@ -50,8 +53,10 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^24.1.0",
     "@types/supertest": "^6.0.3",
+    "cypress": "^14.5.3",
     "jest": "^30.0.5",
     "nodemon": "^3.1.10",
+    "nyc": "^17.1.0",
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",
@@ -70,10 +75,13 @@
     "transform": {
       "^.+\\.ts$": "ts-jest"
     },
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/tests/setup.ts"
+    ],
     "collectCoverageFrom": [
       "src/**/*.ts",
       "!src/**/*.d.ts",
-      "!src/tests/**",
+      "!src/tests/setup.ts",
       "!src/server.ts"
     ],
     "coverageDirectory": "coverage",
@@ -81,6 +89,7 @@
       "text",
       "lcov",
       "html"
-    ]
+    ],
+    "testTimeout": 10000
   }
 }

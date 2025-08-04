@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
@@ -11,18 +11,11 @@
 	let error = '';
 	let success = '';
 
-	// Form data
-	let formData = {
-		address: '',
-		garageDoorSize: '',
-		material: '',
-		color: '',
-		style: '',
-		notes: '',
-		photo: null
-	};
+	// Form data - simplified to only address and doors
+	let address = '';
+	let doors: { size: string }[] = [{ size: '' }];
 
-	// Garage door options
+	// Garage door size options
 	const sizeOptions = [
 		'8x7 feet',
 		'9x7 feet',
@@ -35,23 +28,21 @@
 		'Custom size'
 	];
 
-	const materialOptions = [
-		'Steel',
-		'Wood',
-		'Aluminum',
-		'Fiberglass',
-		'Vinyl',
-		'Composite'
-	];
+	// Add a new door to the list
+	function addDoor() {
+		console.log('Adding door, current doors:', doors);
+		doors = [...doors, { size: '' }];
+		console.log('After adding door:', doors);
+	}
 
-	const styleOptions = [
-		'Traditional',
-		'Carriage House',
-		'Contemporary',
-		'Modern',
-		'Rustic',
-		'Custom'
-	];
+	// Remove a door from the list
+	function removeDoor(index: number) {
+		console.log('Removing door at index:', index, 'current doors:', doors);
+		if (doors.length > 1) {
+			doors = doors.filter((_, i) => i !== index);
+			console.log('After removing door:', doors);
+		}
+	}
 
 	onMount(() => {
 		if (browser) {
@@ -67,8 +58,27 @@
 		}
 	});
 
-	async function handleSubmit(event) {
+	async function handleSubmit(event: Event) {
 		event.preventDefault();
+		
+		if (!user) {
+			error = 'Please log in to submit data';
+			return;
+		}
+
+		// Validate required fields
+		if (!address.trim()) {
+			error = 'Address is required';
+			return;
+		}
+
+		// Check that at least one door has a size
+		const validDoors = doors.filter(door => door.size.trim() !== '');
+		if (validDoors.length === 0) {
+			error = 'At least one garage door size is required';
+			return;
+		}
+
 		loading = true;
 		error = '';
 		success = '';
@@ -76,213 +86,164 @@
 		try {
 			const token = localStorage.getItem('authToken');
 			
-			const submitData = new FormData();
-			Object.keys(formData).forEach(key => {
-				if (formData[key] !== null && formData[key] !== '') {
-					submitData.append(key, formData[key]);
-				}
-			});
+			const submitData = {
+				address: address.trim(),
+				doors: validDoors
+			};
 
 			const response = await fetch(`${API_BASE}/data/submit`, {
 				method: 'POST',
 				headers: {
-					'Authorization': `Bearer ${token}`
+					'Authorization': `Bearer ${token}`,
+					'Content-Type': 'application/json'
 				},
-				body: submitData
+				body: JSON.stringify(submitData)
 			});
 
 			const result = await response.json();
 
 			if (response.ok) {
-				success = 'Data submitted successfully! Thank you for contributing.';
+				success = `Data submitted successfully! Added ${validDoors.length} garage door(s) for this address.`;
+				
 				// Reset form
-				formData = {
-					address: '',
-					garageDoorSize: '',
-					material: '',
-					color: '',
-					style: '',
-					notes: '',
-					photo: null
-				};
-				// Reset file input
-				const fileInput = document.getElementById('photo');
-				if (fileInput) fileInput.value = '';
+				address = '';
+				doors = [{ size: '' }];
 			} else {
 				error = result.error || 'Failed to submit data';
 			}
 		} catch (err) {
 			error = 'Network error. Please try again.';
+			console.error('Submit error:', err);
 		} finally {
 			loading = false;
-		}
-	}
-
-	function handleFileChange(event) {
-		const file = event.target.files[0];
-		if (file) {
-			if (file.size > 5 * 1024 * 1024) { // 5MB limit
-				error = 'File size must be less than 5MB';
-				event.target.value = '';
-				return;
-			}
-			formData.photo = file;
 		}
 	}
 </script>
 
 <svelte:head>
 	<title>Submit Data - Garage Door Quest</title>
+	<meta name="description" content="Submit garage door data to help improve our detection system" />
 </svelte:head>
 
 <div class="min-h-screen py-4 px-2">
 	<div class="max-w-md mx-auto">
 		<!-- Header -->
 		<div class="text-box mb-6">
-			<h1 class="text-xl mb-4">📊 SUBMIT DATA 📊</h1>
-			<p class="text-sm">
-				Help build the garage door database!<br>
-				Submit photos and details of garage doors you encounter.
+			<h1 class="text-xl mb-4 text-center">📊 SUBMIT DATA 📊</h1>
+			<p class="text-center text-sm">
+				Help improve our garage door detection by submitting property data
 			</p>
 		</div>
 
-		<!-- Back Button -->
-		<div class="mb-4">
-			<a href="/" class="btn-retro btn-outline text-sm">
-				← BACK TO HOME
-			</a>
-		</div>
-
-		{#if error}
-			<div class="text-box mb-4" style="background: linear-gradient(45deg, #dc2626, #991b1b);">
-				<p class="text-white text-sm">💥 ERROR: {error}</p>
-			</div>
-		{/if}
-
-		{#if success}
-			<div class="text-box mb-4" style="background: linear-gradient(45deg, #16a34a, #15803d);">
-				<p class="text-white text-sm">✅ {success}</p>
-			</div>
-		{/if}
-
-		<!-- Submit Form -->
+		<!-- Form -->
 		<form on:submit={handleSubmit} class="space-y-4">
-			<!-- Address -->
+			<!-- Address Input -->
 			<div class="text-box">
-				<label for="address" class="block text-white text-sm mb-2">Address or Location</label>
+				<label for="address" class="block text-white text-sm mb-2">
+					🏠 PROPERTY ADDRESS *
+				</label>
 				<input
+					type="text"
 					id="address"
-					type="text"
-					bind:value={formData.address}
-					class="input-field"
-					placeholder="123 Main St, City, State"
+					bind:value={address}
+					placeholder="123 Main Street, City, State"
+					class="w-full p-3 bg-gray-800 border-2 border-white text-white text-sm font-mono focus:border-yellow-400 focus:outline-none"
 					required
 				/>
 			</div>
 
-			<!-- Garage Door Size -->
+			<!-- Garage Doors Section -->
 			<div class="text-box">
-				<label for="size" class="block text-white text-sm mb-2">Garage Door Size</label>
-				<select
-					id="size"
-					bind:value={formData.garageDoorSize}
-					class="input-field"
-					required
+				<h2 class="text-white text-sm mb-4">🚪 GARAGE DOORS</h2>
+				
+				{#each doors as door, index}
+					<div class="mb-4 p-3 bg-gray-800 border border-gray-600 rounded">
+						<div class="flex items-center justify-between mb-2">
+							<label class="text-white text-xs">
+								DOOR {index + 1} SIZE *
+							</label>
+							{#if doors.length > 1}
+								<button
+									type="button"
+									on:click={() => removeDoor(index)}
+									class="text-red-400 hover:text-red-300 text-xs"
+								>
+									❌ REMOVE
+								</button>
+							{/if}
+						</div>
+						
+						<select
+							bind:value={door.size}
+							class="w-full p-3 bg-gray-700 border border-white text-white text-xs font-mono focus:border-yellow-400 focus:outline-none h-12"
+							required
+						>
+							<option value="">Select size...</option>
+							{#each sizeOptions as size}
+								<option value={size}>{size}</option>
+							{/each}
+						</select>
+					</div>
+				{/each}
+
+				<!-- Add Another Door Button -->
+				<button
+					type="button"
+					on:click={addDoor}
+					class="btn-retro btn-outline w-full"
 				>
-					<option value="">Select size...</option>
-					{#each sizeOptions as size}
-						<option value={size}>{size}</option>
-					{/each}
-				</select>
+					➕ ADD ANOTHER DOOR
+				</button>
 			</div>
 
-			<!-- Material -->
-			<div class="text-box">
-				<label for="material" class="block text-white text-sm mb-2">Material</label>
-				<select
-					id="material"
-					bind:value={formData.material}
-					class="input-field"
-					required
-				>
-					<option value="">Select material...</option>
-					{#each materialOptions as material}
-						<option value={material}>{material}</option>
-					{/each}
-				</select>
-			</div>
+			<!-- Error Message -->
+			{#if error}
+				<div class="text-box">
+					<div class="text-red-400 text-center text-sm">
+						❌ {error}
+					</div>
+				</div>
+			{/if}
 
-			<!-- Color -->
-			<div class="text-box">
-				<label for="color" class="block text-white text-sm mb-2">Color</label>
-				<input
-					id="color"
-					type="text"
-					bind:value={formData.color}
-					class="input-field"
-					placeholder="White, Brown, Black, etc."
-					required
-				/>
-			</div>
-
-			<!-- Style -->
-			<div class="text-box">
-				<label for="style" class="block text-white text-sm mb-2">Style</label>
-				<select
-					id="style"
-					bind:value={formData.style}
-					class="input-field"
-					required
-				>
-					<option value="">Select style...</option>
-					{#each styleOptions as style}
-						<option value={style}>{style}</option>
-					{/each}
-				</select>
-			</div>
-
-			<!-- Photo -->
-			<div class="text-box">
-				<label for="photo" class="block text-white text-sm mb-2">Photo (Optional)</label>
-				<input
-					id="photo"
-					type="file"
-					accept="image/*"
-					on:change={handleFileChange}
-					class="input-field text-sm"
-				/>
-				<p class="text-xs text-gray-300 mt-1">Max file size: 5MB</p>
-			</div>
-
-			<!-- Notes -->
-			<div class="text-box">
-				<label for="notes" class="block text-white text-sm mb-2">Additional Notes (Optional)</label>
-				<textarea
-					id="notes"
-					bind:value={formData.notes}
-					class="input-field"
-					placeholder="Any additional details about the garage door..."
-					rows="3"
-				></textarea>
-			</div>
+			<!-- Success Message -->
+			{#if success}
+				<div class="text-box power-up">
+					<div class="text-green-400 text-center text-sm">
+						✅ {success}
+					</div>
+				</div>
+			{/if}
 
 			<!-- Submit Button -->
 			<button
 				type="submit"
 				disabled={loading}
-				class="btn-retro btn-success w-full text-lg font-bold"
+				class="btn-retro btn-primary w-full {loading ? 'opacity-50 cursor-not-allowed' : ''}"
 			>
-				{loading ? '⏳ SUBMITTING...' : '📊 SUBMIT DATA'}
+				{#if loading}
+					⏳ SUBMITTING...
+				{:else}
+					📤 SUBMIT DATA
+				{/if}
 			</button>
 		</form>
 
 		<!-- Info Box -->
 		<div class="text-box mt-6">
-			<h3 class="text-sm font-bold mb-2">💰 EARN REWARDS</h3>
-			<p class="text-xs">
-				Earn points for each data submission!<br>
-				Quality submissions help build our database.
-			</p>
+			<h3 class="text-sm mb-2">ℹ️ HOW IT HELPS</h3>
+			<ul class="text-xs space-y-1 text-gray-300">
+				<li>• Improves our AI detection accuracy</li>
+				<li>• Helps provide better price estimates</li>
+				<li>• Contributes to the community database</li>
+				<li>• Earns you points and achievements</li>
+			</ul>
+		</div>
+
+		<!-- Navigation -->
+		<div class="mt-6 text-center">
+			<a href="/game" class="btn-retro btn-outline">
+				🎮 BACK TO GAME
+			</a>
 		</div>
 	</div>
 </div>

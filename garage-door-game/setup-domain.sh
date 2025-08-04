@@ -22,14 +22,14 @@ gcloud services enable domains.googleapis.com
 
 # Create domain mapping
 echo "🔗 Creating domain mapping..."
-gcloud run domain-mappings create \
+gcloud beta run domain-mappings create \
   --service $FRONTEND_SERVICE \
   --domain $DOMAIN \
   --region $REGION
 
 # Get the required DNS records
 echo "📋 Getting DNS configuration..."
-gcloud run domain-mappings describe $DOMAIN --region $REGION
+gcloud beta run domain-mappings describe $DOMAIN --region $REGION
 
 echo ""
 echo "🎯 Domain setup initiated!"
@@ -44,4 +44,4 @@ echo "2. Wait for DNS propagation (can take up to 48 hours)"
 echo "3. SSL certificate will be automatically provisioned"
 echo ""
 echo "🔍 Check status with:"
-echo "gcloud run domain-mappings describe $DOMAIN --region $REGION"
+echo "gcloud beta run domain-mappings describe $DOMAIN --region $REGION"

@@ -1,0 +1,39 @@
+{
+  "validUser": {
+    "username": "testuser",
+    "email": "test@example.com",
+    "password": "TestPassword123!"
+  },
+  "adminUser": {
+    "username": "admin",
+    "email": "admin@example.com",
+    "password": "AdminPassword123!"
+  },
+  "invalidUsers": [
+    {
+      "username": "",
+      "email": "invalid@example.com",
+      "password": "TestPassword123!",
+      "error": "Username is required"
+    },
+    {
+      "username": "testuser",
+      "email": "invalid-email",
+      "password": "TestPassword123!",
+      "error": "Please provide a valid email address"
+    },
+    {
+      "username": "testuser",
+      "email": "test@example.com",
+      "password": "weak",
+      "error": "Password must be at least 8 characters long"
+    },
+    {
+      "username": "testuser",
+      "email": "test@example.com",
+      "password": "TestPassword123!",
+      "confirmPassword": "DifferentPassword123!",
+      "error": "Passwords do not match"
+    }
+  ]
+}

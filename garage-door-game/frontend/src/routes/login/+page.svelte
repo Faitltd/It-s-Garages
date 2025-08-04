@@ -12,7 +12,8 @@
 	let username = '';
 	let confirmPassword = '';
 
-	const API_BASE = 'https://garage-door-backend-341270520862.us-central1.run.app/api';
+	import { getApiBase } from '$lib/config';
+	const API_BASE = getApiBase();
 
 	// Handle login
 	async function handleLogin() {

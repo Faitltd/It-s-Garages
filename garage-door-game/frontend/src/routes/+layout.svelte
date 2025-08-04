@@ -5,6 +5,7 @@
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 
+
 	let { children } = $props();
 	let isMenuOpen = $state(false);
 	let user = $state<any>(null);
@@ -73,14 +74,20 @@
 						Home
 					</a>
 					{#if user}
-						<a href="/game" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							🎮 Play Game
+						<a href="/data-entry" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
+							📝 Data Entry
+						</a>
+						<a href="/validation-game" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
+							🎮 Validation Game
 						</a>
 						<a href="/submit" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
 							📝 Submit Data
 						</a>
 						<a href="/leaderboard" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
 							🏆 Leaderboard
+						</a>
+						<a href="/achievements" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
+							🏅 Achievements
 						</a>
 						<a href="/profile" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
 							👤 Profile
@@ -96,6 +103,9 @@
 					{:else}
 						<a href="/leaderboard" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
 							🏆 Leaderboard
+						</a>
+						<a href="/achievements" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
+							🏅 Achievements
 						</a>
 
 						<!-- Auth buttons -->
@@ -137,6 +147,12 @@
 						Home
 					</a>
 					{#if user}
+						<a href="/data-entry" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
+							📝 Data Entry
+						</a>
+						<a href="/validation-game" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
+							🎮 Validation Game
+						</a>
 						<a href="/game" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
 							🎮 Play Game
 						</a>

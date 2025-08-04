@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Street View Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .street-view-image {
+            width: 100%;
+            max-width: 640px;
+            height: 640px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .info {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .status.demo { background: #fff3cd; border: 1px solid #ffeaa7; }
+        .status.ready { background: #d4edda; border: 1px solid #c3e6cb; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏠 Google Street View Test</h1>
+        
+        <div id="status" class="status demo">
+            <strong>Demo Mode:</strong> Using placeholder images. Add Google API keys to see real Street View images.
+        </div>
+        
+        <div class="info">
+            <h3>Current Test Location:</h3>
+            <p id="location-info">Loading...</p>
+        </div>
+        
+        <img id="street-view-image" class="street-view-image" src="" alt="Street View" />
+        
+        <div>
+            <button onclick="loadStreetView()">🔄 Reload Street View</button>
+            <button onclick="testNewLocation()">📍 Test Random Location</button>
+        </div>
+        
+        <div class="info">
+            <h3>How to Enable Real Street View Images:</h3>
+            <ol>
+                <li>Go to <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a></li>
+                <li>Create a new project or select existing one</li>
+                <li>Enable "Street View Static API"</li>
+                <li>Create API credentials (API Key)</li>
+                <li>Update your <code>.env</code> file with the real API key</li>
+                <li>Restart the backend server</li>
+            </ol>
+        </div>
+        
+        <div class="info">
+            <h3>API Response:</h3>
+            <pre id="api-response" style="background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto;"></pre>
+        </div>
+    </div>
+
+    <script>
+        let currentLocation = { lat: 37.7749, lng: -122.4194 };
+        
+        async function loadStreetView() {
+            try {
+                const response = await fetch('/api/test/streetview');
+                const data = await response.json();
+                
+                document.getElementById('api-response').textContent = JSON.stringify(data, null, 2);
+                
+                if (data.success) {
+                    document.getElementById('street-view-image').src = data.streetViewUrl;
+                    document.getElementById('location-info').innerHTML = `
+                        <strong>Latitude:</strong> ${data.testLocation.lat}<br>
+                        <strong>Longitude:</strong> ${data.testLocation.lng}<br>
+                        <strong>Address:</strong> ${data.testLocation.address}
+                    `;
+                    
+                    const statusEl = document.getElementById('status');
+                    if (data.apiKeyConfigured) {
+                        statusEl.className = 'status ready';
+                        statusEl.innerHTML = '<strong>Ready:</strong> Using real Google Street View images!';
+                    } else {
+                        statusEl.className = 'status demo';
+                        statusEl.innerHTML = '<strong>Demo Mode:</strong> Using placeholder images. Add Google API keys to see real Street View images.';
+                    }
+                } else {
+                    document.getElementById('location-info').textContent = 'Error loading Street View data';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('location-info').textContent = 'Error: ' + error.message;
+            }
+        }
+        
+        function testNewLocation() {
+            // Generate random coordinates in populated areas
+            const locations = [
+                { lat: 40.7128, lng: -74.0060, name: "New York City" },
+                { lat: 34.0522, lng: -118.2437, name: "Los Angeles" },
+                { lat: 41.8781, lng: -87.6298, name: "Chicago" },
+                { lat: 29.7604, lng: -95.3698, name: "Houston" },
+                { lat: 33.4484, lng: -112.0740, name: "Phoenix" },
+                { lat: 39.9526, lng: -75.1652, name: "Philadelphia" },
+                { lat: 32.7767, lng: -96.7970, name: "Dallas" },
+                { lat: 37.7749, lng: -122.4194, name: "San Francisco" }
+            ];
+            
+            const randomLocation = locations[Math.floor(Math.random() * locations.length)];
+            currentLocation = randomLocation;
+            
+            // This would need to be implemented to test different locations
+            alert(`Testing new location: ${randomLocation.name}\n(${randomLocation.lat}, ${randomLocation.lng})\n\nNote: This demo uses a fixed test location. The real game generates random locations.`);
+        }
+        
+        // Load initial Street View
+        loadStreetView();
+    </script>
+</body>
+</html>

@@ -13,7 +13,10 @@ import {
   getUserGameHistory,
   updateUserStats,
   generateRandomLocation,
-  getTimeLimitForDifficulty
+  getTimeLimitForDifficulty,
+  createQuestionGameSession,
+  submitQuestionAnswer,
+  getRandomQuestion
 } from '../services/gameService';
 import { createError } from '../middleware/errorHandler';
 import Joi from 'joi';
@@ -37,6 +40,15 @@ const submitGuessSchema = Joi.object({
   garageHeight: Joi.number().positive().optional(),
   garageType: Joi.string().valid('single', 'double', 'triple', 'commercial', 'other').optional(),
   confidence: Joi.number().min(0).max(100).default(50)
+});
+
+const startQuestionGameSchema = Joi.object({
+  difficulty: Joi.string().valid('easy', 'medium', 'hard').default('medium')
+});
+
+const submitAnswerSchema = Joi.object({
+  sessionId: Joi.string().required(),
+  selectedAnswer: Joi.string().required()
 });
 
 // @desc    Start a new game session
@@ -64,14 +76,14 @@ router.post('/start',
         gameLocation = generateRandomLocation(difficulty || 'medium');
       }
 
-      // Build Street View URL
+      // Build Street View URL optimized for residential garage door viewing
       const streetViewUrl = googleApiService.buildStreetViewUrl({
         lat: gameLocation.lat,
         lng: gameLocation.lng,
         size: '640x640',
-        heading: Math.floor(Math.random() * 360), // Random heading
-        pitch: 0,
-        fov: 90
+        heading: Math.floor(Math.random() * 360), // Random heading to show different house angles
+        pitch: -10, // Slightly downward angle to better capture garage doors
+        fov: 90 // Standard field of view for house viewing
       });
 
       // Create game session in database
@@ -224,6 +236,136 @@ router.get('/history',
             total: history.total,
             pages: Math.ceil(history.total / limit)
           }
+        }
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// @desc    Start a new question-based game session
+// @route   POST /api/game/question/start
+// @access  Private
+router.post('/question/start',
+  authenticate,
+  validate(startQuestionGameSchema),
+  auditDataAccess('game_question', 'start'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      const { difficulty } = req.body;
+      const userId = req.user!.userId;
+
+      // Create question-based game session
+      const session = await createQuestionGameSession(userId, difficulty);
+
+      if (!session) {
+        res.status(404).json({
+          success: false,
+          error: {
+            message: 'No questions available for the selected difficulty level',
+            code: 'NO_QUESTIONS_AVAILABLE'
+          }
+        });
+        return;
+      }
+
+      // Return session data without revealing correct answer
+      res.json({
+        success: true,
+        data: {
+          sessionId: session.sessionId,
+          imageUrl: session.imageUrl,
+          difficulty: session.difficulty,
+          timeLimit: session.timeLimit,
+          pointsValue: session.pointsValue,
+          address: session.address,
+          options: session.options
+        }
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// @desc    Submit answer for question-based game
+// @route   POST /api/game/question/answer
+// @access  Private
+router.post('/question/answer',
+  authenticate,
+  validate(submitAnswerSchema),
+  auditDataAccess('game_question', 'answer'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      const { sessionId, selectedAnswer } = req.body;
+      const userId = req.user!.userId;
+
+      // Submit answer
+      const result = await submitQuestionAnswer(sessionId, selectedAnswer, userId);
+
+      if (!result) {
+        res.status(404).json({
+          success: false,
+          error: {
+            message: 'Game session not found or expired',
+            code: 'SESSION_NOT_FOUND'
+          }
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: {
+          correct: result.correct,
+          correctAnswer: result.correctAnswer,
+          pointsEarned: result.pointsEarned,
+          accuracy: result.accuracy
+        }
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// @desc    Get random question for preview (no session)
+// @route   GET /api/game/question/random
+// @access  Private
+router.get('/question/random',
+  authenticate,
+  auditDataAccess('game_question', 'preview'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      const difficulty = req.query.difficulty as string || 'medium';
+
+      const question = await getRandomQuestion(difficulty);
+
+      if (!question) {
+        res.status(404).json({
+          success: false,
+          error: {
+            message: 'No questions available',
+            code: 'NO_QUESTIONS_AVAILABLE'
+          }
+        });
+        return;
+      }
+
+      // Return question without revealing correct answer
+      res.json({
+        success: true,
+        data: {
+          id: question.id,
+          address: question.address,
+          imageUrl: question.image_url,
+          difficulty: question.difficulty,
+          pointsValue: question.points_value,
+          options: [question.option_a, question.option_b, question.option_c, question.option_d]
         }
       });
 

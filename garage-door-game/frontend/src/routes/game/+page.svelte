@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 
+
 	interface GameSession {
 		sessionId: number;
 		streetViewUrl: string;
@@ -92,7 +93,8 @@
 	// Results
 	let scoreResult: ScoreResult | null = null;
 
-	const API_BASE = 'https://garage-door-backend-341270520862.us-central1.run.app/api';
+	import { getApiBase } from '$lib/config';
+	const API_BASE = getApiBase();
 
 	// Get auth token from localStorage
 	function getAuthToken(): string | null {
@@ -602,13 +604,13 @@
 					<!-- Game Header -->
 					<div class="text-box mb-4">
 						<div class="flex justify-between items-center">
-							<h2 class="text-lg">📍 {gameSession.location.address}</h2>
+							<h2 class="text-lg">📍 {gameSession?.location?.address || 'Loading...'}</h2>
 							<div class="text-lg font-bold {timeRemaining <= 10 ? 'text-red-400' : 'text-yellow-300'}">
 								⏱️ {formatTime(timeRemaining)}
 							</div>
 						</div>
 						<div class="text-center mt-2">
-							<span class="text-yellow-300">DIFFICULTY: {gameSession.difficulty.toUpperCase()}</span>
+							<span class="text-yellow-300">DIFFICULTY: {gameSession?.difficulty?.toUpperCase() || 'NORMAL'}</span>
 						</div>
 					</div>
 
@@ -617,13 +619,16 @@
 						<div class="text-box p-2">
 							<div class="aspect-square border-4 border-white max-w-sm mx-auto bg-green-600 flex items-center justify-center">
 								<img
-									src={gameSession.streetViewUrl}
+									src={gameSession?.streetViewUrl || ''}
 									alt="Street View"
 									class="w-full h-full object-cover"
 									on:error={(e) => {
 										// Hide the broken image and show fallback
-										e.target.style.display = 'none';
-										e.target.parentElement.innerHTML = '<div class="text-white text-center p-8"><div class="text-4xl mb-4">🏠</div><div class="text-lg font-bold">GARAGE DOOR</div><div class="text-sm">DEMO IMAGE</div></div>';
+										const target = e.target as HTMLImageElement;
+										if (target && target.parentElement) {
+											target.style.display = 'none';
+											target.parentElement.innerHTML = '<div class="text-white text-center p-8"><div class="text-4xl mb-4">🏠</div><div class="text-lg font-bold">GARAGE DOOR</div><div class="text-sm">DEMO IMAGE</div></div>';
+										}
 									}}
 								/>
 							</div>

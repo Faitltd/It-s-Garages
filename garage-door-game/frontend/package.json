@@ -11,7 +11,12 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
-		"lint": "prettier --check . && eslint ."
+		"lint": "prettier --check . && eslint .",
+		"cypress:open": "cypress open",
+		"cypress:run": "cypress run",
+		"cypress:run:headless": "cypress run --headless",
+		"test:e2e": "cypress run --headless",
+		"test:e2e:dev": "cypress open"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^6.0.0",
@@ -27,6 +32,7 @@
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.0.0",
 		"tailwindcss": "^4.1.11",
+		"terser": "^5.43.1",
 		"typescript": "^5.0.0",
 		"vite": "^7.0.4"
 	},

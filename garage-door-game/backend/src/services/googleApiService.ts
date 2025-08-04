@@ -30,14 +30,14 @@ class GoogleApiService {
    */
   private getSecureApiKey(keyName: string): string {
     const apiKey = process.env[keyName];
-    
-    if (!apiKey) {
-      throw new Error(`${keyName} environment variable is required`);
+
+    if (!apiKey || apiKey === 'your-google-street-view-api-key' || apiKey === 'your-google-maps-api-key') {
+      throw new Error(`${keyName} environment variable is required and must be a valid Google API key. Please set up your Google Cloud API key.`);
     }
 
     // Basic validation - Google API keys should start with 'AIza'
     if (!apiKey.startsWith('AIza')) {
-      console.warn(`Warning: ${keyName} may not be a valid Google API key`);
+      throw new Error(`${keyName} must be a valid Google API key starting with 'AIza'. Current value appears to be invalid.`);
     }
 
     return apiKey;
@@ -126,19 +126,7 @@ class GoogleApiService {
   }): string {
     const apiKey = this.getStreetViewApiKey();
 
-    // If no valid API key, return a placeholder image
-    if (!apiKey || apiKey === 'placeholder-key') {
-      // Return a simple data URL with a green rectangle
-      const placeholderUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
-        <svg width="640" height="640" xmlns="http://www.w3.org/2000/svg">
-          <rect width="100%" height="100%" fill="#228B22"/>
-          <text x="50%" y="45%" font-family="Arial, sans-serif" font-size="36" fill="#FFFFFF" text-anchor="middle">GARAGE DOOR</text>
-          <text x="50%" y="55%" font-family="Arial, sans-serif" font-size="36" fill="#FFFFFF" text-anchor="middle">DEMO</text>
-        </svg>
-      `);
-      console.log('🖼️ Using placeholder Street View URL:', placeholderUrl.substring(0, 100) + '...');
-      return placeholderUrl;
-    }
+    // No fallback - API key is required and validated in constructor
 
     const baseUrl = 'https://maps.googleapis.com/maps/api/streetview';
 
@@ -185,6 +173,39 @@ class GoogleApiService {
 
     return `${baseUrl}?${urlParams.toString()}`;
   }
+
+  /**
+   * Geocode an address to get coordinates
+   */
+  async geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+    try {
+      if (!this.checkUsageLimit('maps')) {
+        throw new Error('Google Maps API daily limit exceeded');
+      }
+
+      const encodedAddress = encodeURIComponent(address);
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${this.mapsApiKey}`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      this.incrementUsage('maps');
+
+      if (data.status === 'OK' && data.results && data.results.length > 0) {
+        const location = data.results[0].geometry.location;
+        return {
+          lat: location.lat,
+          lng: location.lng
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      return null;
+    }
+  }
+
 }
 
 // Create rate limiter for Google API endpoints
