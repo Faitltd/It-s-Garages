@@ -191,8 +191,8 @@ class GoogleApiService {
 
       this.incrementUsage('maps');
 
-      if (data.status === 'OK' && data.results && data.results.length > 0) {
-        const location = data.results[0].geometry.location;
+      if ((data as any).status === 'OK' && (data as any).results && (data as any).results.length > 0) {
+        const location = (data as any).results[0].geometry.location;
         return {
           lat: location.lat,
           lng: location.lng

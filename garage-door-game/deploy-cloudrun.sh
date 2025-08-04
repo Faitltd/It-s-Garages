@@ -37,8 +37,8 @@ gcloud run deploy $BACKEND_SERVICE \
   --set-env-vars NODE_ENV=production \
   --set-env-vars DATABASE_URL=sqlite:./garage_game.db \
   --set-env-vars JWT_SECRET=garage-door-production-jwt-secret-2024 \
-  --set-env-vars GOOGLE_STREET_VIEW_API_KEY=AIzaSyAGHVpNfxdylz_gRfaLxbVOYvaBz3woTec \
-  --set-env-vars GOOGLE_MAPS_API_KEY=AIzaSyAGHVpNfxdylz_gRfaLxbVOYvaBz3woTec \
+  --set-env-vars GOOGLE_STREET_VIEW_API_KEY=AIzaSyBiVQb3x1YxwcqaPLuuSAyw2mnWybmxtQE \
+  --set-env-vars GOOGLE_MAPS_API_KEY=AIzaSyBiVQb3x1YxwcqaPLuuSAyw2mnWybmxtQE \
   --set-env-vars CORS_ORIGIN=https://itsgarages.itsfait.com
 
 # Get backend URL
