@@ -120,7 +120,7 @@
 </script>
 
 <svelte:head>
-	<title>{isLogin ? 'Login' : 'Register'} - Garage Door Game</title>
+	<title>{isLogin ? 'Login' : 'Register'} - It's Garages</title>
 </svelte:head>
 
 <div class="min-h-screen flex flex-col justify-center py-12 px-4">

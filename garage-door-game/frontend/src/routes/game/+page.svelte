@@ -339,7 +339,7 @@
 </script>
 
 <svelte:head>
-	<title>Play Game - Garage Door Game</title>
+	<title>Play Game - It's Garages</title>
 </svelte:head>
 
 <div class="min-h-screen py-4 px-2">

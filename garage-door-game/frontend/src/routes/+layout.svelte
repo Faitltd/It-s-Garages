@@ -62,9 +62,9 @@
 					<!-- Logo -->
 					<a href="/" class="flex items-center space-x-2">
 						<div class="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-							<span class="text-white font-bold text-sm">GD</span>
+							<span class="text-white font-bold text-sm">IG</span>
 						</div>
-						<span class="text-xl font-semibold text-gray-900">Garage Door Game</span>
+						<span class="text-xl font-semibold text-gray-900">It's Garages</span>
 					</a>
 				</div>
 
@@ -80,9 +80,7 @@
 						<a href="/validation-game" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
 							🎮 Validation Game
 						</a>
-						<a href="/submit" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							📝 Submit Data
-						</a>
+
 						<a href="/leaderboard" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
 							🏆 Leaderboard
 						</a>
@@ -159,9 +157,7 @@
 						<a href="/game" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
 							🎮 Play Game
 						</a>
-						<a href="/submit" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-							📝 Submit Data
-						</a>
+
 						<a href="/leaderboard" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
 							🏆 Leaderboard
 						</a>
@@ -207,9 +203,9 @@
 			<div class="flex flex-col md:flex-row justify-between items-center">
 				<div class="flex items-center space-x-2 mb-4 md:mb-0">
 					<div class="w-6 h-6 bg-gradient-primary rounded flex items-center justify-center">
-						<span class="text-white font-bold text-xs">GD</span>
+						<span class="text-white font-bold text-xs">IG</span>
 					</div>
-					<span class="text-gray-600 text-sm">© 2025 Garage Door Game. All rights reserved.</span>
+					<span class="text-gray-600 text-sm">© 2025 It's Garages. All rights reserved.</span>
 				</div>
 				<div class="flex space-x-6 text-sm text-gray-600">
 					<a href="/about" class="hover:text-primary-600 transition-colors">About</a>

@@ -3,15 +3,7 @@
 	import { browser } from '$app/environment';
 
 	let user: any = null;
-	let stats = {
-		totalPlayers: 1247,
-		gamesPlayed: 8934,
-		dataSubmitted: 3421,
-		pointsAwarded: 156789,
-		averageAccuracy: 78.5,
-		topPlayer: 'GarageMaster2024',
-		recentAchievements: 42
-	};
+
 
 	onMount(() => {
 		// Check if user is logged in
@@ -27,8 +19,8 @@
 </script>
 
 <svelte:head>
-	<title>Garage Door Game - Earn Points by Identifying Garage Doors</title>
-	<meta name="description" content="Play the garage door identification game! Earn points by guessing garage door details from Street View images and submit your own data." />
+	<title>It's Garages - Garage Door Data Collection Platform</title>
+	<meta name="description" content="Collect and validate garage door data with GPS-powered address detection and Street View integration." />
 </svelte:head>
 
 <!-- Hero Section -->
@@ -37,16 +29,11 @@
 		<div class="text-center">
 			<div class="text-box power-up mb-6">
 				<h1 class="text-xl mb-4">
-					🏠 GARAGE DOOR QUEST 🏠
+					🚪 IT'S GARAGES 🚪
 				</h1>
 				<p class="text-lg mb-4">
-					Who Is The Best Tech?
+					Garage Door Data Collection Platform
 				</p>
-				<div class="flex justify-center mb-2">
-					<div class="coin"></div>
-					<div class="coin"></div>
-					<div class="coin"></div>
-				</div>
 			</div>
 
 			<div class="space-y-4">
@@ -82,97 +69,7 @@
 	</div>
 </section>
 
-<!-- Stats Section -->
-<section class="py-8 px-4">
-	<div class="max-w-md mx-auto">
-		<div class="text-box mb-4">
-			<h2 class="text-lg mb-4">🏆 GLOBAL STATS 🏆</h2>
-		</div>
 
-		<div class="space-y-3">
-			<div class="score-display power-up">
-				<div class="flex items-center justify-between">
-					<div class="flex items-center gap-3">
-						<div class="text-2xl">👥</div>
-						<div class="text-white text-sm">PLAYERS</div>
-					</div>
-					<div class="score-number text-lg">
-						{stats.totalPlayers.toLocaleString()}
-					</div>
-				</div>
-			</div>
-			<div class="score-display power-up">
-				<div class="flex items-center justify-between">
-					<div class="flex items-center gap-3">
-						<div class="text-2xl">🎮</div>
-						<div class="text-white text-sm">GAMES</div>
-					</div>
-					<div class="score-number text-lg">
-						{stats.gamesPlayed.toLocaleString()}
-					</div>
-				</div>
-			</div>
-			<div class="score-display power-up">
-				<div class="flex items-center justify-between">
-					<div class="flex items-center gap-3">
-						<div class="text-2xl">📊</div>
-						<div class="text-white text-sm">DATA</div>
-					</div>
-					<div class="score-number text-lg">
-						{stats.dataSubmitted.toLocaleString()}
-					</div>
-				</div>
-			</div>
-			<div class="score-display power-up">
-				<div class="flex items-center justify-between">
-					<div class="flex items-center gap-3">
-						<div class="coin"></div>
-						<div class="text-white text-sm">COINS</div>
-					</div>
-					<div class="score-number text-lg">
-						{stats.pointsAwarded.toLocaleString()}
-					</div>
-				</div>
-			</div>
-			<!-- Additional Stats -->
-			<div class="space-y-3 mt-4">
-				<div class="score-display">
-					<div class="flex items-center justify-between">
-						<div class="flex items-center gap-3">
-							<div class="text-2xl">🎯</div>
-							<div class="text-white text-sm">ACCURACY</div>
-						</div>
-						<div class="score-number text-lg">
-							{stats.averageAccuracy}%
-						</div>
-					</div>
-				</div>
-				<div class="score-display">
-					<div class="flex items-center justify-between">
-						<div class="flex items-center gap-3">
-							<div class="text-2xl">👑</div>
-							<div class="text-white text-sm">TOP PLAYER</div>
-						</div>
-						<div class="score-number text-sm">
-							{stats.topPlayer}
-						</div>
-					</div>
-				</div>
-				<div class="score-display">
-					<div class="flex items-center justify-between">
-						<div class="flex items-center gap-3">
-							<div class="text-2xl">🏅</div>
-							<div class="text-white text-sm">ACHIEVEMENTS</div>
-						</div>
-						<div class="score-number text-lg">
-							{stats.recentAchievements}
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-</section>
 
 <!-- Quick Links -->
 <section class="py-8 px-4">

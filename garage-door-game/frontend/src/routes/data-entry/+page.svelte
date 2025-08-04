@@ -170,7 +170,7 @@
 </script>
 
 <svelte:head>
-  <title>Data Entry - Garage Door Game</title>
+  <title>Data Entry - It's Garages</title>
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 py-8">

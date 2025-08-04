@@ -94,7 +94,7 @@
 </script>
 
 <svelte:head>
-	<title>Leaderboard - Garage Door Game</title>
+	<title>Leaderboard - It's Garages</title>
 	<meta name="description" content="See the top players in the garage door identification game!" />
 </svelte:head>
 

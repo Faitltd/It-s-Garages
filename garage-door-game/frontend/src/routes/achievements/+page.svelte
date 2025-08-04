@@ -186,7 +186,7 @@
 </script>
 
 <svelte:head>
-	<title>Achievements - Garage Door Game</title>
+	<title>Achievements - It's Garages</title>
 	<meta name="description" content="Track your progress and unlock achievements in the garage door game!" />
 </svelte:head>
 
