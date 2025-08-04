@@ -15,6 +15,8 @@
   let loading = false;
   let message = '';
   let messageType = '';
+  let gettingLocation = false;
+  let locationSupported = 'geolocation' in navigator;
 
   // Check authentication
   onMount(() => {
@@ -23,6 +25,69 @@
       goto('/login');
     }
   });
+
+  // Get user's current location and reverse geocode to address
+  async function getCurrentLocation() {
+    if (!locationSupported) {
+      message = 'Geolocation is not supported by this browser';
+      messageType = 'error';
+      return;
+    }
+
+    gettingLocation = true;
+    message = '';
+
+    try {
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5 minutes
+        });
+      });
+
+      const { latitude, longitude } = (position as GeolocationPosition).coords;
+
+      // Reverse geocode using Google Maps API
+      const auth = get(authStore);
+      const response = await fetch('/api/data-entry/reverse-geocode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${auth.token}`
+        },
+        body: JSON.stringify({ latitude, longitude })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.address) {
+          address = data.address;
+          message = 'Location detected! Address auto-filled.';
+          messageType = 'success';
+        } else {
+          message = 'Could not determine address from your location';
+          messageType = 'error';
+        }
+      } else {
+        throw new Error('Failed to get address from location');
+      }
+    } catch (error) {
+      console.error('Geolocation error:', error);
+      if ((error as any).code === 1) {
+        message = 'Location access denied. Please enable location services and try again.';
+      } else if ((error as any).code === 2) {
+        message = 'Location unavailable. Please check your GPS/network connection.';
+      } else if ((error as any).code === 3) {
+        message = 'Location request timed out. Please try again.';
+      } else {
+        message = 'Failed to get your location. Please enter address manually.';
+      }
+      messageType = 'error';
+    } finally {
+      gettingLocation = false;
+    }
+  }
 
   const doorTypes = [
     { value: 'single', label: 'Single Door' },
@@ -129,15 +194,47 @@
           <label for="address" class="block text-sm font-medium text-gray-700 mb-2">
             Address *
           </label>
-          <input
-            type="text"
-            id="address"
-            bind:value={address}
-            placeholder="123 Main St, City, State"
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <p class="text-sm text-gray-500 mt-1">Enter the full address including city and state</p>
+          <div class="flex gap-2">
+            <input
+              type="text"
+              id="address"
+              bind:value={address}
+              placeholder="123 Main St, City, State"
+              required
+              class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {#if locationSupported}
+              <button
+                type="button"
+                on:click={getCurrentLocation}
+                disabled={gettingLocation}
+                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                title="Use my current location"
+              >
+                {#if gettingLocation}
+                  <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Getting...
+                {:else}
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                  </svg>
+                  📍 Use Location
+                {/if}
+              </button>
+            {/if}
+          </div>
+          <p class="text-sm text-gray-500 mt-1">
+            Enter the full address including city and state
+            {#if locationSupported}
+              or click "Use Location" to auto-fill your current address
+            {:else}
+              (Geolocation not supported by this browser)
+            {/if}
+          </p>
         </div>
 
         <!-- Door Count -->

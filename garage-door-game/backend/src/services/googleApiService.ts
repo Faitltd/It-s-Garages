@@ -206,6 +206,35 @@ class GoogleApiService {
     }
   }
 
+  /**
+   * Reverse geocode coordinates to get address
+   */
+  async reverseGeocode(latitude: number, longitude: number): Promise<string | null> {
+    try {
+      if (!this.checkUsageLimit('maps')) {
+        throw new Error('Google Maps API daily limit exceeded');
+      }
+
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${this.mapsApiKey}`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      this.incrementUsage('maps');
+
+      if ((data as any).status === 'OK' && (data as any).results && (data as any).results.length > 0) {
+        // Get the first result (most accurate)
+        const result = (data as any).results[0];
+        return result.formatted_address;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Reverse geocoding error:', error);
+      return null;
+    }
+  }
+
 }
 
 // Create rate limiter for Google API endpoints

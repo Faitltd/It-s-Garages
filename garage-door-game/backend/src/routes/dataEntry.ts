@@ -8,6 +8,12 @@ import Joi from 'joi';
 
 const router = express.Router();
 
+// Validation schema for reverse geocoding
+const reverseGeocodeSchema = Joi.object({
+  latitude: Joi.number().min(-90).max(90).required(),
+  longitude: Joi.number().min(-180).max(180).required()
+});
+
 // Validation schema for data entry
 const dataEntrySchema = Joi.object({
   address: Joi.string().required().min(10).max(200),
@@ -30,6 +36,45 @@ interface DataEntry {
   notes?: string;
   confidence_level: number;
 }
+
+/**
+ * Reverse geocode coordinates to address
+ */
+router.post('/reverse-geocode',
+  authenticate,
+  validate(reverseGeocodeSchema),
+  auditDataAccess('data_entry', 'reverse_geocode'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      const { latitude, longitude } = req.body;
+
+      // Use Google Maps Geocoding API to get address from coordinates
+      const address = await googleApiService.reverseGeocode(latitude, longitude);
+
+      if (address) {
+        res.json({
+          success: true,
+          address: address
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          error: {
+            message: 'Could not determine address from coordinates'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Reverse geocoding error:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to reverse geocode coordinates'
+        }
+      });
+    }
+  }
+);
 
 /**
  * Submit garage door data with automatic Street View image capture
