@@ -36,7 +36,7 @@
 			id: 'first_game',
 			name: 'First Steps',
 			description: 'Play your first game',
-			emoji: '🎮',
+			emoji: '',
 			category: 'Getting Started',
 			requirement: 'Complete 1 game',
 			points: 10,
@@ -58,7 +58,7 @@
 			id: 'data_contributor',
 			name: 'Data Contributor',
 			description: 'Submit 5 garage door photos',
-			emoji: '📊',
+			emoji: '',
 			category: 'Community',
 			requirement: 'Submit 5 photos',
 			points: 25,
@@ -102,7 +102,7 @@
 			id: 'veteran',
 			name: 'Veteran Player',
 			description: 'Play 100 games',
-			emoji: '🏆',
+			emoji: '',
 			category: 'Dedication',
 			requirement: 'Play 100 games',
 			points: 100,
@@ -193,7 +193,7 @@
 <div class="container mx-auto px-4 py-8 max-w-4xl">
 	<!-- Header -->
 	<div class="text-box mb-6">
-		<h1 class="text-xl mb-4 text-center">🏅 ACHIEVEMENTS 🏅</h1>
+		<h1 class="text-xl mb-4 text-center">ACHIEVEMENTS</h1>
 		<p class="text-center text-sm">
 			Unlock rewards by mastering the game
 		</p>

@@ -29,7 +29,7 @@
 		<div class="text-center">
 			<div class="text-box power-up mb-6">
 				<h1 class="text-xl mb-4">
-					🚪 IT'S GARAGES 🚪
+					IT'S GARAGES
 				</h1>
 				<p class="text-lg mb-4">
 					Garage Door Data Collection Platform
@@ -39,57 +39,27 @@
 			<div class="space-y-4">
 				{#if user}
 					<a href="/data-entry" class="btn-retro btn-success text-lg font-bold w-full block">
-						📝 SUBMIT DATA
+						SUBMIT DATA
 					</a>
 					<a href="/validation-game" class="btn-retro btn-warning w-full block">
-						🎮 VALIDATION GAME
+						VALIDATION GAME
 					</a>
-					<a href="/submit" class="btn-retro btn-outline w-full block">
-						📊 OLD SUBMIT
-					</a>
+
 				{:else}
 					<a href="/login" class="btn-retro btn-primary text-lg font-bold w-full block">
-						🎮 START QUEST
+						GET STARTED
 					</a>
 					<a href="/leaderboard" class="btn-retro btn-outline w-full block">
-						🏆 HIGH SCORES
+						HIGH SCORES
 					</a>
 				{/if}
 			</div>
 
-			{#if user}
-				<div class="text-box mt-4">
-					<p class="text-yellow-300 text-sm">
-						Welcome back, <span class="text-white font-bold">{user.username}</span>!<br>
-						Ready for another challenge?
-					</p>
-				</div>
-			{/if}
+
 		</div>
 	</div>
 </section>
 
 
 
-<!-- Quick Links -->
-<section class="py-8 px-4">
-	<div class="max-w-md mx-auto">
-		<div class="text-box mb-4">
-			<h2 class="text-lg mb-4">🚀 QUICK ACCESS 🚀</h2>
-		</div>
 
-		<div class="space-y-3">
-			<a href="/leaderboard" class="btn-retro btn-outline w-full block">
-				🏆 VIEW LEADERBOARD
-			</a>
-			<a href="/achievements" class="btn-retro btn-outline w-full block">
-				🏅 CHECK ACHIEVEMENTS
-			</a>
-			{#if user}
-				<a href="/profile" class="btn-retro btn-outline w-full block">
-					👤 MY PROFILE
-				</a>
-			{/if}
-		</div>
-	</div>
-</section>

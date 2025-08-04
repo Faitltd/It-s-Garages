@@ -75,23 +75,23 @@
 					</a>
 					{#if user}
 						<a href="/data-entry" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							📝 Data Entry
+							Data Entry
 						</a>
 						<a href="/validation-game" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							🎮 Validation Game
+							Validation Game
 						</a>
 
 						<a href="/leaderboard" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							🏆 Leaderboard
+							Leaderboard
 						</a>
 						<a href="/data-dashboard" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							📊 Data Dashboard
+							Data Dashboard
 						</a>
 						<a href="/achievements" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							🏅 Achievements
+							Achievements
 						</a>
 						<a href="/profile" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							👤 Profile
+							Profile
 						</a>
 
 						<!-- User info and logout -->
@@ -103,10 +103,10 @@
 						</div>
 					{:else}
 						<a href="/leaderboard" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							🏆 Leaderboard
+							Leaderboard
 						</a>
 						<a href="/achievements" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							🏅 Achievements
+							Achievements
 						</a>
 
 						<!-- Auth buttons -->
@@ -149,20 +149,20 @@
 					</a>
 					{#if user}
 						<a href="/data-entry" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-							📝 Data Entry
+							Data Entry
 						</a>
 						<a href="/validation-game" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-							🎮 Validation Game
+							Validation Game
 						</a>
 						<a href="/game" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-							🎮 Play Game
+							Play Game
 						</a>
 
 						<a href="/leaderboard" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-							🏆 Leaderboard
+							Leaderboard
 						</a>
 						<a href="/profile" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-							👤 Profile
+							Profile
 						</a>
 
 						<!-- Mobile user info and logout -->
@@ -174,7 +174,7 @@
 						</div>
 					{:else}
 						<a href="/leaderboard" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-							🏆 Leaderboard
+							Leaderboard
 						</a>
 
 						<!-- Mobile auth buttons -->

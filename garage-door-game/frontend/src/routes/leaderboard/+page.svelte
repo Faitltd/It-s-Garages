@@ -76,16 +76,7 @@
 	}
 
 	function getAchievementEmoji(achievement: string) {
-		const emojiMap: Record<string, string> = {
-			'first_game': '🎮',
-			'accuracy_master': '🎯',
-			'data_contributor': '📊',
-			'speed_demon': '⚡',
-			'perfectionist': '💎',
-			'explorer': '🗺️',
-			'veteran': '🏆'
-		};
-		return emojiMap[achievement] || '🏅';
+		return '';
 	}
 
 	async function handleFilterChange() {
@@ -101,7 +92,7 @@
 <div class="container mx-auto px-4 py-8 max-w-4xl">
 	<!-- Header -->
 	<div class="text-box mb-6">
-		<h1 class="text-xl mb-4 text-center">🏆 LEADERBOARD 🏆</h1>
+		<h1 class="text-xl mb-4 text-center">LEADERBOARD</h1>
 		<p class="text-center text-sm">
 			Top garage door identification experts
 		</p>
@@ -221,7 +212,7 @@
 	<!-- Empty State -->
 	{#if !loading && !error && leaderboard.length === 0}
 		<div class="text-box text-center">
-			<div class="text-4xl mb-4">🏆</div>
+			<div class="text-4xl mb-4"></div>
 			<h2 class="text-lg mb-4">No Players Yet</h2>
 			<p class="mb-4">Be the first to join the leaderboard!</p>
 			<a href="/game" class="btn-retro btn-primary">
