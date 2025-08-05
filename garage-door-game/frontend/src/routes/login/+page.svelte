@@ -42,7 +42,7 @@
 					localStorage.setItem('authToken', data.data.token);
 					localStorage.setItem('user', JSON.stringify(data.data.user));
 				}
-				goto('/game');
+				goto('/');
 			} else {
 				error = data.error?.message || 'Login failed';
 			}
@@ -86,7 +86,7 @@
 					localStorage.setItem('authToken', data.data.token);
 					localStorage.setItem('user', JSON.stringify(data.data.user));
 				}
-				goto('/game');
+				goto('/');
 			} else {
 				error = data.error?.message || 'Registration failed';
 			}
@@ -126,7 +126,7 @@
 <div class="min-h-screen flex flex-col justify-center py-12 px-4">
 	<div class="max-w-md mx-auto w-full">
 		<div class="text-box power-up mb-6">
-			<h1 class="text-2xl mb-4">🏠 GARAGE DOOR QUEST 🏠</h1>
+			<h1 class="text-2xl mb-4">🏠 IT'S GARAGES</h1>
 			<h2 class="text-lg">
 				{isLogin ? '🎮 PLAYER LOGIN 🎮' : '⭐ JOIN THE QUEST ⭐'}
 			</h2>

@@ -7,12 +7,6 @@ export interface ValidationGameSession {
   centennialAddressId: number;
   address: string;
   imageUrl: string;
-  correctAnswer: {
-    garage_door_count: number;
-    garage_door_width: number;
-    garage_door_height: number;
-    garage_door_type: string;
-  };
   startTime: Date;
   timeLimit: number;
   questionsAnswered: number;
@@ -31,17 +25,11 @@ export interface GameGuess {
 }
 
 export interface ValidationResult {
-  correct: boolean;
-  accuracy: number;
+  submitted: boolean;
   pointsEarned: number;
-  correctAnswer: any;
   feedback: string;
-  breakdown: {
-    countAccuracy: number;
-    sizeAccuracy: number;
-    typeAccuracy: number;
-    overallAccuracy: number;
-  };
+  questionsAnswered: number;
+  totalScore: number;
 }
 
 // In-memory storage for active sessions (use Redis in production)
@@ -71,12 +59,6 @@ export const startValidationGame = async (userId: number): Promise<ValidationGam
       centennialAddressId: address.id,
       address: address.address,
       imageUrl: streetViewUrl,
-      correctAnswer: {
-        garage_door_count: address.garage_door_count || 1,
-        garage_door_width: address.garage_door_width || 8,
-        garage_door_height: address.garage_door_height || 7,
-        garage_door_type: 'single' // Default type
-      },
       startTime: new Date(),
       timeLimit: 60, // 60 seconds
       questionsAnswered: 0,
@@ -111,17 +93,11 @@ export const submitValidationGuess = async (
     // Handle skipped questions
     if (guess.skipped) {
       const result: ValidationResult = {
-        correct: false,
-        accuracy: 0,
+        submitted: false,
         pointsEarned: 0,
-        correctAnswer: session.correctAnswer,
-        feedback: 'Question skipped. No points awarded, but no penalty either!',
-        breakdown: {
-          countAccuracy: 0,
-          sizeAccuracy: 0,
-          typeAccuracy: 0,
-          overallAccuracy: 0
-        }
+        feedback: 'Question skipped. No points awarded.',
+        questionsAnswered: session.questionsAnswered,
+        totalScore: session.totalScore
       };
 
       // Save skipped result
@@ -138,17 +114,11 @@ export const submitValidationGuess = async (
       await markAddressAsNotVisible(session.centennialAddressId);
 
       const result: ValidationResult = {
-        correct: false,
-        accuracy: 0,
+        submitted: false,
         pointsEarned: 0,
-        correctAnswer: session.correctAnswer,
-        feedback: 'Address marked as "garage not visible". This address will not appear in future games. No points awarded.',
-        breakdown: {
-          countAccuracy: 0,
-          sizeAccuracy: 0,
-          typeAccuracy: 0,
-          overallAccuracy: 0
-        }
+        feedback: 'Address marked as "garage not visible". This address will not appear in future games.',
+        questionsAnswered: session.questionsAnswered,
+        totalScore: session.totalScore
       };
 
       // Save not visible result
@@ -159,57 +129,32 @@ export const submitValidationGuess = async (
       return result;
     }
 
-    // Calculate accuracy for each component
-    const countAccuracy = guess.garage_door_count === session.correctAnswer.garage_door_count ? 1.0 : 0.0;
-    
-    // Size accuracy - allow some tolerance
-    const widthDiff = Math.abs(guess.garage_door_width - session.correctAnswer.garage_door_width);
-    const heightDiff = Math.abs(guess.garage_door_height - session.correctAnswer.garage_door_height);
-    const widthAccuracy = Math.max(0, 1 - (widthDiff / session.correctAnswer.garage_door_width));
-    const heightAccuracy = Math.max(0, 1 - (heightDiff / session.correctAnswer.garage_door_height));
-    const sizeAccuracy = (widthAccuracy + heightAccuracy) / 2;
-    
-    const typeAccuracy = guess.garage_door_type === session.correctAnswer.garage_door_type ? 1.0 : 0.0;
+    // This is data collection, not validation - award points for participation
+    const pointsEarned = 10; // Fixed points for submitting data
 
-    // Overall accuracy (weighted)
-    const overallAccuracy = (countAccuracy * 0.4 + sizeAccuracy * 0.4 + typeAccuracy * 0.2);
-    
-    // Calculate points based on accuracy and confidence
-    const basePoints = Math.floor(overallAccuracy * 100);
-    const confidenceBonus = Math.floor(basePoints * (guess.confidence / 100) * 0.2);
-    const pointsEarned = basePoints + confidenceBonus;
-
-    // Generate feedback
-    let feedback = '';
-    if (overallAccuracy >= 0.9) {
-      feedback = 'Excellent! Your measurements are very accurate!';
-    } else if (overallAccuracy >= 0.7) {
-      feedback = 'Good job! You got most details right.';
-    } else if (overallAccuracy >= 0.5) {
-      feedback = 'Not bad, but there\'s room for improvement.';
-    } else {
-      feedback = 'Keep practicing! Try to look more carefully at the details.';
-    }
+    // Generate encouraging feedback
+    const feedbackOptions: string[] = [
+      'Thanks for your submission! Your data helps improve our system.',
+      'Great job! Every measurement helps us learn.',
+      'Excellent contribution! Your input is valuable.',
+      'Well done! Thanks for helping us collect garage door data.',
+      'Perfect! Your observations help train our AI.'
+    ];
+    const feedback: string = feedbackOptions[Math.floor(Math.random() * feedbackOptions.length)] || 'Thanks for your contribution!';
 
     const result: ValidationResult = {
-      correct: overallAccuracy >= 0.8,
-      accuracy: overallAccuracy,
+      submitted: true,
       pointsEarned,
-      correctAnswer: session.correctAnswer,
       feedback,
-      breakdown: {
-        countAccuracy,
-        sizeAccuracy,
-        typeAccuracy,
-        overallAccuracy
-      }
+      questionsAnswered: session.questionsAnswered + 1,
+      totalScore: session.totalScore + pointsEarned
     };
 
     // Save game result
     await saveValidationGameResult(session, guess, result);
 
     // Update user stats
-    await updateUserValidationStats(userId, pointsEarned, overallAccuracy);
+    await updateUserValidationStats(userId, pointsEarned, 1.0); // Always count as "accurate" since it's data collection
 
     // Update session for next question
     session.questionsAnswered++;
@@ -278,12 +223,6 @@ export const getNextValidationQuestion = async (sessionId: string, userId: numbe
     session.centennialAddressId = address.id;
     session.address = address.address;
     session.imageUrl = streetViewUrl;
-    session.correctAnswer = {
-      garage_door_count: address.garage_door_count || 1,
-      garage_door_width: address.garage_door_width || 8,
-      garage_door_height: address.garage_door_height || 7,
-      garage_door_type: 'single' // Default type
-    };
     session.currentQuestionStartTime = new Date();
 
     activeSessions.set(sessionId, session);
@@ -335,9 +274,9 @@ const saveValidationGameResult = async (
       guess.garage_door_height || 0,
       guess.garage_door_type || 'unknown',
       guess.confidence || 0,
-      result.accuracy,
+      1.0, // Always 1.0 accuracy for data collection
       result.pointsEarned,
-      result.correct ? 1 : 0,
+      result.submitted ? 1 : 0, // 1 if submitted, 0 if skipped/not visible
       timeTaken
     ], function(err) {
       if (err) {

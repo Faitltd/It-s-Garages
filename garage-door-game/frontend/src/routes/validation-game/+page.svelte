@@ -204,8 +204,8 @@
     gameState = 'final-results';
   }
 
-  function playAgain() {
-    gameState = 'menu';
+  async function playAgain() {
+    // Reset all game state
     gameResult = null;
     garage_door_count = 1;
     garage_door_width = 8;
@@ -221,6 +221,9 @@
     questionsAnswered = 0;
     totalScore = 0;
     if (timer) clearInterval(timer);
+
+    // Start a new game immediately
+    await startGame();
   }
 
   function formatTime(seconds: number): string {
@@ -447,43 +450,25 @@
             {/if}
           </div>
 
-          <!-- Correct Answer -->
-          <div class="bg-blue-50 p-6 rounded-lg">
-            <h3 class="text-lg font-bold text-gray-900 mb-4">Correct Answer:</h3>
+          <!-- Data Collection Info -->
+          <div class="bg-green-50 p-6 rounded-lg">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Data Collected!</h3>
             <div class="space-y-2 text-sm">
-              <p><strong>Count:</strong> {gameResult.correctAnswer.garage_door_count} door{gameResult.correctAnswer.garage_door_count > 1 ? 's' : ''}</p>
-              <p><strong>Size:</strong> {gameResult.correctAnswer.garage_door_width} × {gameResult.correctAnswer.garage_door_height} feet</p>
-              <p><strong>Type:</strong> {gameResult.correctAnswer.garage_door_type}</p>
-              <p><strong>Standard Size:</strong> {gameResult.correctAnswer.door_size}</p>
+              <p><strong>Your Submission:</strong> {garage_door_count} door{garage_door_count > 1 ? 's' : ''}</p>
+              <p><strong>Size:</strong> {garage_door_width} × {garage_door_height} feet</p>
+              <p><strong>Type:</strong> {garage_door_type}</p>
+              <p><strong>Confidence:</strong> {confidence}/5</p>
             </div>
           </div>
         </div>
 
-        <!-- Score Breakdown -->
-        <div class="bg-gradient-to-r from-blue-50 to-green-50 p-6 rounded-lg mb-6">
-          <div class="text-center mb-4">
-            <div class="text-3xl font-bold text-blue-600">{gameResult.pointsEarned} Points</div>
-            <div class="text-lg text-gray-600">Accuracy: {Math.round(gameResult.accuracy * 100)}%</div>
-          </div>
-          
-          <div class="grid grid-cols-3 gap-4 text-center text-sm">
-            <div>
-              <div class="font-medium">Count</div>
-              <div class="text-2xl {gameResult.breakdown.countAccuracy === 1 ? 'text-green-600' : 'text-red-600'}">
-                {Math.round(gameResult.breakdown.countAccuracy * 100)}%
-              </div>
-            </div>
-            <div>
-              <div class="font-medium">Size</div>
-              <div class="text-2xl {gameResult.breakdown.sizeAccuracy > 0.7 ? 'text-green-600' : 'text-orange-600'}">
-                {Math.round(gameResult.breakdown.sizeAccuracy * 100)}%
-              </div>
-            </div>
-            <div>
-              <div class="font-medium">Type</div>
-              <div class="text-2xl {gameResult.breakdown.typeAccuracy === 1 ? 'text-green-600' : 'text-red-600'}">
-                {Math.round(gameResult.breakdown.typeAccuracy * 100)}%
-              </div>
+        <!-- Points Earned -->
+        <div class="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg mb-6">
+          <div class="text-center">
+            <div class="text-4xl font-bold text-green-600 mb-2">+{gameResult.pointsEarned} Points</div>
+            <div class="text-lg text-gray-600">Thanks for contributing data!</div>
+            <div class="text-sm text-gray-500 mt-2">
+              Total Questions: {gameResult.questionsAnswered} | Total Score: {gameResult.totalScore}
             </div>
           </div>
         </div>

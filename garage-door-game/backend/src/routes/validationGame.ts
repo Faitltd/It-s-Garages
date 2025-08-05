@@ -103,12 +103,11 @@ router.post('/guess',
       res.json({
         success: true,
         data: {
-          correct: result.correct,
-          accuracy: result.accuracy,
+          submitted: result.submitted,
           pointsEarned: result.pointsEarned,
           feedback: result.feedback,
-          correctAnswer: result.correctAnswer,
-          breakdown: result.breakdown
+          questionsAnswered: result.questionsAnswered,
+          totalScore: result.totalScore
         }
       });
 
