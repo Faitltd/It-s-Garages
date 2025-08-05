@@ -34,8 +34,15 @@ const startGameSchema = Joi.object({
 });
 
 const submitGuessSchema = Joi.object({
-  sessionId: Joi.number().integer().positive().required(),
-  garageCount: Joi.number().integer().min(0).max(10).optional(),
+  sessionId: Joi.alternatives().try(
+    Joi.number().integer().positive(),
+    Joi.string().pattern(/^\d+$/).message('sessionId must be a valid number')
+  ).required().messages({
+    'any.required': 'Session ID is required'
+  }),
+  garageCount: Joi.number().integer().min(0).max(10).required().messages({
+    'any.required': 'Garage count is required'
+  }),
   garageWidth: Joi.number().positive().optional(),
   garageHeight: Joi.number().positive().optional(),
   garageType: Joi.string().valid('single', 'double', 'triple', 'commercial', 'other').optional(),
@@ -130,8 +137,11 @@ router.post('/guess',
 
       const { sessionId, garageCount, garageWidth, garageHeight, garageType, confidence, skipped, notVisible } = req.body;
 
+      // Convert sessionId to number if it's a string
+      const sessionIdNumber = typeof sessionId === 'string' ? parseInt(sessionId, 10) : sessionId;
+
       // Validate session belongs to user
-      const session = await getGameSession(sessionId, req.user.userId);
+      const session = await getGameSession(sessionIdNumber, req.user.userId);
       if (!session) {
         return next(createError('Game session not found or access denied', 404));
       }
@@ -152,7 +162,7 @@ router.post('/guess',
       });
 
       // Update session with guess and score
-      await updateGameSession(sessionId, {
+      await updateGameSession(sessionIdNumber, {
         garageCount,
         garageWidth,
         garageHeight,
