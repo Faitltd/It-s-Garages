@@ -56,12 +56,29 @@ export const startValidationGame = async (userId: number): Promise<ValidationGam
 
     // Create session
     const sessionId = require('crypto').randomUUID();
+    // Check if the stored Street View URL is valid, use fallback if not
+    let imageUrl = dataEntry.street_view_url || '';
+
+    // If the URL contains Google Street View API, test if it works
+    if (imageUrl.includes('maps.googleapis.com/maps/api/streetview')) {
+      try {
+        const response = await fetch(imageUrl, { method: 'HEAD' });
+        if (!response.ok) {
+          // Use placeholder if Google API returns error
+          imageUrl = 'https://via.placeholder.com/640x640/cccccc/666666?text=Street+View+Unavailable';
+        }
+      } catch (error) {
+        // Use placeholder if fetch fails
+        imageUrl = 'https://via.placeholder.com/640x640/cccccc/666666?text=Street+View+Unavailable';
+      }
+    }
+
     const session: ValidationGameSession = {
       sessionId,
       userId,
       dataEntryId: dataEntry.id,
       address: dataEntry.address,
-      imageUrl: dataEntry.street_view_url || '',
+      imageUrl,
       correctAnswer: {
         garage_door_count: dataEntry.garage_door_count,
         garage_door_width: dataEntry.garage_door_width,
