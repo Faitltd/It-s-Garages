@@ -49,55 +49,48 @@
 					</div>
 				</div>
 
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+				<div class="space-y-4 mb-6">
 					<!-- Data Entry Option -->
-					<div class="text-box p-6">
+					<div class="text-box p-4">
 						<div class="mb-4">
-							<div class="text-4xl mb-2">📏</div>
-							<h3 class="text-lg font-bold mb-2">MEASURE DOORS</h3>
-							<p class="text-sm text-gray-300 mb-4">
-								Add real garage door measurements to help train our AI system.
-								Use GPS location or search for addresses.
+							<div class="text-3xl mb-2">📏</div>
+							<h3 class="text-base font-bold mb-2">MEASURE DOORS</h3>
+							<p class="text-xs text-gray-300 mb-4">
+								Add real garage door measurements with GPS location.
 							</p>
 						</div>
-						<a href="/data-entry" class="btn-retro btn-success w-full">
+						<a href="/data-entry" class="btn-retro btn-success w-full text-sm">
 							START MEASURING
 						</a>
 					</div>
 
-					<!-- Game Option -->
-					<div class="text-box p-6">
+					<!-- Single Game Option -->
+					<div class="text-box p-4">
 						<div class="mb-4">
-							<div class="text-4xl mb-2">🎮</div>
-							<h3 class="text-lg font-bold mb-2">PLAY GAMES</h3>
-							<p class="text-sm text-gray-300 mb-4">
-								Test your skills guessing garage door sizes from Street View images.
-								Earn points and compete on leaderboards!
+							<div class="text-3xl mb-2">🎮</div>
+							<h3 class="text-base font-bold mb-2">GARAGE DOOR GAME</h3>
+							<p class="text-xs text-gray-300 mb-4">
+								Guess garage door sizes from Street View images. Skip if no door visible.
 							</p>
 						</div>
-						<div class="space-y-2">
-							<a href="/game" class="btn-retro btn-primary w-full block">
-								CLASSIC GAME
-							</a>
-							<a href="/validation-game" class="btn-retro btn-warning w-full block">
-								VALIDATION GAME
-							</a>
-						</div>
+						<a href="/validation-game" class="btn-retro btn-primary w-full text-sm">
+							PLAY GAME
+						</a>
 					</div>
 				</div>
 
 				<!-- Additional Options -->
-				<div class="grid grid-cols-2 gap-4 mb-6">
-					<a href="/leaderboard" class="btn-retro btn-outline">
+				<div class="space-y-2 mb-6">
+					<a href="/leaderboard" class="btn-retro btn-outline w-full text-sm">
 						🏆 LEADERBOARD
 					</a>
-					<a href="/achievements" class="btn-retro btn-outline">
+					<a href="/achievements" class="btn-retro btn-outline w-full text-sm">
 						🎖️ ACHIEVEMENTS
 					</a>
 				</div>
 
 				<!-- Logout -->
-				<button on:click={logout} class="btn-retro btn-outline text-sm">
+				<button on:click={logout} class="btn-retro btn-outline w-full text-sm">
 					LOGOUT
 				</button>
 

@@ -234,87 +234,86 @@
 </script>
 
 <svelte:head>
-  <title>Validation Game - It's Garages</title>
+  <title>Garage Door Game - It's Garages</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 py-8">
-  <div class="max-w-4xl mx-auto px-4">
+<div class="min-h-screen bg-gray-50 py-4">
+  <div class="max-w-2xl mx-auto px-4">
     
     {#if gameState === 'menu'}
       <!-- Game Menu -->
-      <div class="bg-white rounded-lg shadow-md p-8 text-center">
-        <h1 class="text-4xl font-bold text-gray-900 mb-4">Validation Game</h1>
-        <p class="text-lg text-gray-600 mb-8">
-          Test your garage door measurement skills! We'll show you a Street View image 
-          and you guess the measurements. Your guesses are compared against verified data.
+      <div class="text-box p-6 text-center">
+        <h1 class="text-2xl font-bold mb-4">🎮 GARAGE DOOR GAME</h1>
+        <p class="text-sm text-gray-300 mb-6">
+          Guess garage door sizes from Street View images. Skip if no door is visible!
         </p>
 
         {#if message}
-          <div class="mb-6 p-4 bg-red-50 text-red-800 border border-red-200 rounded-md">
+          <div class="mb-4 p-3 bg-red-900 border border-red-700 rounded text-red-300 text-sm">
             {message}
           </div>
         {/if}
 
-        <div class="space-y-4">
+        <div class="space-y-3">
           <button
             on:click={startGame}
             disabled={loading}
-            class="px-8 py-3 bg-blue-600 text-white text-lg font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            class="btn-retro btn-primary w-full text-sm"
           >
-            {loading ? 'Starting...' : 'Start Game'}
+            {loading ? '⏳ STARTING...' : '🚀 START GAME'}
           </button>
 
-          <div class="text-sm text-gray-500">
+          <div class="text-xs text-gray-400 space-y-1">
             <p>• Look at the garage door in the image</p>
-            <p>• Estimate the count, dimensions, and type</p>
-            <p>• You have 60 seconds per image</p>
-            <p>• Earn points for accuracy!</p>
+            <p>• Estimate count, size, and type</p>
+            <p>• Skip if no door visible</p>
+            <p>• Earn points for participation!</p>
           </div>
 
           <button
-            on:click={() => goto('/data-entry')}
-            class="block mx-auto px-4 py-2 text-blue-600 hover:text-blue-800 font-medium"
+            on:click={() => goto('/')}
+            class="btn-retro btn-outline w-full text-sm"
           >
-            ← Back to Data Entry
+            ← BACK TO MENU
           </button>
         </div>
       </div>
 
     {:else if gameState === 'playing'}
       <!-- Game Playing -->
-      <div class="bg-white rounded-lg shadow-md overflow-hidden">
+      <div class="text-box overflow-hidden">
         <!-- Header -->
-        <div class="bg-blue-600 text-white p-4 flex justify-between items-center">
-          <h2 class="text-xl font-bold">Validation Game</h2>
-          <div class="text-lg font-mono">
-            Time: {formatTime(timeLeft)}
+        <div class="bg-blue-900 text-white p-3 flex justify-between items-center border-b border-blue-700">
+          <h2 class="text-lg font-bold">🎮 GARAGE DOOR GAME</h2>
+          <div class="text-sm font-mono">
+            ⏱️ {formatTime(timeLeft)}
           </div>
         </div>
 
-        <div class="p-6">
+        <div class="p-4">
           <!-- Address -->
           <div class="mb-4">
-            <h3 class="text-lg font-medium text-gray-900 mb-2">Address:</h3>
-            <p class="text-gray-600">{address}</p>
+            <h3 class="text-sm font-bold text-gray-300 mb-1">ADDRESS:</h3>
+            <p class="text-xs text-gray-400">{address}</p>
           </div>
 
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div class="space-y-6">
             <!-- Street View Image -->
             <div>
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Street View Image:</h3>
+              <h3 class="text-sm font-bold text-gray-300 mb-2">STREET VIEW:</h3>
               {#if imageUrl && !imageError}
                 <img
                   src={imageUrl}
                   alt="Street view of {address}"
-                  class="w-full h-64 object-cover rounded-lg border border-gray-300"
+                  class="w-full h-48 object-cover rounded border border-gray-600"
                   on:error={() => imageError = true}
                 />
               {:else}
-                <div class="w-full h-64 bg-gray-200 rounded-lg flex items-center justify-center border border-gray-300">
+                <div class="w-full h-48 bg-gray-800 rounded flex items-center justify-center border border-gray-600">
                   <div class="text-center">
-                    <div class="text-4xl text-gray-400 mb-2">🏠</div>
-                    <p class="text-gray-500 font-medium">Street View Unavailable</p>
-                    <p class="text-gray-400 text-sm">Please use the address information to make your guess</p>
+                    <div class="text-3xl text-gray-500 mb-2">🏠</div>
+                    <p class="text-gray-400 font-bold text-sm">NO IMAGE</p>
+                    <p class="text-gray-500 text-xs">Use address info</p>
                   </div>
                 </div>
               {/if}
@@ -322,15 +321,15 @@
 
             <!-- Guess Form -->
             <div>
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Your Guess:</h3>
-              
-              <form on:submit|preventDefault={submitGuess} class="space-y-4">
+              <h3 class="text-sm font-bold text-gray-300 mb-3">YOUR GUESS:</h3>
+
+              <form on:submit|preventDefault={submitGuess} class="space-y-3">
                 <!-- Door Count -->
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Number of Doors
+                  <label class="block text-xs font-bold text-gray-400 mb-1">
+                    DOORS
                   </label>
-                  <select bind:value={garage_door_count} class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <select bind:value={garage_door_count} class="w-full px-2 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm">
                     {#each [1, 2, 3, 4, 5] as count}
                       <option value={count}>{count}</option>
                     {/each}
@@ -338,10 +337,10 @@
                 </div>
 
                 <!-- Dimensions -->
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-2 gap-2">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Width (ft)
+                    <label class="block text-xs font-bold text-gray-400 mb-1">
+                      WIDTH (ft)
                     </label>
                     <input
                       type="number"
@@ -349,12 +348,12 @@
                       min="4"
                       max="20"
                       step="0.5"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      class="w-full px-2 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm"
                     />
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Height (ft)
+                    <label class="block text-xs font-bold text-gray-400 mb-1">
+                      HEIGHT (ft)
                     </label>
                     <input
                       type="number"
@@ -362,17 +361,17 @@
                       min="6"
                       max="12"
                       step="0.5"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      class="w-full px-2 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm"
                     />
                   </div>
                 </div>
 
                 <!-- Door Type -->
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Door Type
+                  <label class="block text-xs font-bold text-gray-400 mb-1">
+                    TYPE
                   </label>
-                  <select bind:value={garage_door_type} class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <select bind:value={garage_door_type} class="w-full px-2 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm">
                     {#each doorTypes as type}
                       <option value={type.value}>{type.label}</option>
                     {/each}
@@ -381,8 +380,8 @@
 
                 <!-- Confidence -->
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Confidence: {confidence}/5
+                  <label class="block text-xs font-bold text-gray-400 mb-1">
+                    CONFIDENCE: {confidence}/5
                   </label>
                   <input
                     type="range"
@@ -393,29 +392,29 @@
                   />
                 </div>
 
-                <div class="grid grid-cols-3 gap-2">
+                <div class="space-y-2">
                   <button
                     type="button"
                     on:click={() => submitGuess(true)}
                     disabled={loading}
-                    class="px-3 py-2 bg-gray-500 text-white text-sm rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:opacity-50"
+                    class="btn-retro btn-outline w-full text-xs"
                   >
-                    {loading ? 'Skipping...' : 'Skip Question'}
+                    {loading ? '⏳ SKIPPING...' : '⏭️ SKIP QUESTION'}
                   </button>
                   <button
                     type="button"
                     on:click={() => submitGuess(false, true)}
                     disabled={loading}
-                    class="px-3 py-2 bg-orange-500 text-white text-sm rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 disabled:opacity-50"
+                    class="btn-retro btn-warning w-full text-xs"
                   >
-                    {loading ? 'Marking...' : 'Garage Not Visible'}
+                    {loading ? '⏳ MARKING...' : '🚫 NO DOOR VISIBLE'}
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    class="px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+                    class="btn-retro btn-success w-full text-xs"
                   >
-                    {loading ? 'Submitting...' : 'Submit Guess'}
+                    {loading ? '⏳ SUBMITTING...' : '✅ SUBMIT GUESS'}
                   </button>
                 </div>
               </form>

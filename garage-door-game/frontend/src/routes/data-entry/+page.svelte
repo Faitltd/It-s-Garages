@@ -223,13 +223,12 @@
   <title>Data Entry - It's Garages</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 py-8">
-  <div class="max-w-2xl mx-auto px-4">
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <h1 class="text-3xl font-bold text-gray-900 mb-2">Garage Door Data Entry</h1>
-      <p class="text-gray-600 mb-6">
-        Help us collect accurate garage door measurements for machine learning training. 
-        Enter the address and measurements, and we'll automatically capture a Street View image.
+<div class="min-h-screen bg-gray-50 py-4">
+  <div class="max-w-lg mx-auto px-4">
+    <div class="text-box p-4">
+      <h1 class="text-xl font-bold mb-2">📏 MEASURE DOORS</h1>
+      <p class="text-xs text-gray-300 mb-4">
+        Add real garage door measurements with GPS location.
       </p>
 
       {#if message}
