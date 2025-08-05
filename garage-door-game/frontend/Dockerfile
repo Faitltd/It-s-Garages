@@ -13,6 +13,14 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Accept build arguments
+ARG VITE_API_BASE_URL
+ARG PUBLIC_API_BASE_URL
+
+# Set environment variables for build
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV PUBLIC_API_BASE_URL=$PUBLIC_API_BASE_URL
+
 # Build the application
 RUN npm run build
 

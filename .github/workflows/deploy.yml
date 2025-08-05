@@ -1,20 +1,22 @@
-name: Deploy to Cloud Run
+name: Deploy Garage Door Game to Cloud Run
 
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    paths:
+      - 'garage-door-game/**'
+      - '.github/workflows/deploy.yml'
 
 env:
   PROJECT_ID: its-garages
-  SERVICE: its-garages-app
   REGION: us-central1
+  BACKEND_SERVICE: garage-door-backend
+  FRONTEND_SERVICE: garage-door-frontend
 
 jobs:
-  deploy:
+  deploy-backend:
     runs-on: ubuntu-latest
-    
+
     permissions:
       contents: read
       id-token: write
@@ -36,25 +38,99 @@ jobs:
       run: |
         gcloud auth configure-docker
 
-    - name: Build and Push Container
+    - name: Enable required APIs
       run: |
-        docker build -t gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA .
-        docker push gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA
+        gcloud config set project $PROJECT_ID
+        gcloud services enable cloudbuild.googleapis.com
+        gcloud services enable run.googleapis.com
+        gcloud services enable containerregistry.googleapis.com
 
-    - name: Deploy to Cloud Run
+    - name: Build and Deploy Backend
       run: |
-        gcloud run deploy $SERVICE \
-          --image gcr.io/$PROJECT_ID/$SERVICE:$GITHUB_SHA \
+        cd garage-door-game/backend
+        gcloud builds submit --tag gcr.io/$PROJECT_ID/$BACKEND_SERVICE
+        gcloud run deploy $BACKEND_SERVICE \
+          --image gcr.io/$PROJECT_ID/$BACKEND_SERVICE \
+          --platform managed \
+          --region $REGION \
+          --allow-unauthenticated \
+          --port 8080 \
+          --memory 1Gi \
+          --cpu 1 \
+          --max-instances 10 \
+          --set-env-vars NODE_ENV=production \
+          --set-env-vars DATABASE_URL=sqlite:./garage_game.db \
+          --set-env-vars JWT_SECRET=${{ secrets.JWT_SECRET }} \
+          --set-env-vars GOOGLE_STREET_VIEW_API_KEY=${{ secrets.GOOGLE_STREET_VIEW_API_KEY }} \
+          --set-env-vars GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }} \
+          --set-env-vars CORS_ORIGIN=https://itsgarages.itsfait.com
+
+    - name: Get Backend URL
+      id: backend
+      run: |
+        BACKEND_URL=$(gcloud run services describe $BACKEND_SERVICE --platform managed --region $REGION --format 'value(status.url)')
+        echo "url=$BACKEND_URL" >> $GITHUB_OUTPUT
+        echo "✅ Backend deployed at: $BACKEND_URL"
+
+    outputs:
+      backend-url: ${{ steps.backend.outputs.url }}
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Google Auth
+      id: auth
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    - name: Set up Cloud SDK
+      uses: 'google-github-actions/setup-gcloud@v2'
+
+    - name: Configure Docker to use gcloud as a credential helper
+      run: |
+        gcloud auth configure-docker
+
+    - name: Build and Deploy Frontend
+      env:
+        BACKEND_URL: ${{ needs.deploy-backend.outputs.backend-url }}
+      run: |
+        cd garage-door-game/frontend
+        # Build with backend URL as build argument
+        gcloud builds submit \
+          --tag gcr.io/$PROJECT_ID/$FRONTEND_SERVICE \
+          --build-arg VITE_API_BASE_URL=$BACKEND_URL/api \
+          --build-arg PUBLIC_API_BASE_URL=$BACKEND_URL/api
+        gcloud run deploy $FRONTEND_SERVICE \
+          --image gcr.io/$PROJECT_ID/$FRONTEND_SERVICE \
           --platform managed \
           --region $REGION \
           --allow-unauthenticated \
           --port 8080 \
           --memory 512Mi \
           --cpu 1 \
-          --max-instances 10 \
-          --set-env-vars FLASK_ENV=production,FLASK_DEBUG=False
+          --max-instances 5 \
+          --set-env-vars NODE_ENV=production
 
-    - name: Show Output
+    - name: Show Deployment Results
+      env:
+        BACKEND_URL: ${{ needs.deploy-backend.outputs.backend-url }}
       run: |
-        echo "Deployment completed!"
-        gcloud run services describe $SERVICE --platform managed --region $REGION --format 'value(status.url)'
+        FRONTEND_URL=$(gcloud run services describe $FRONTEND_SERVICE --platform managed --region $REGION --format 'value(status.url)')
+        echo "🎉 Deployment complete!"
+        echo "🔧 Backend API: $BACKEND_URL"
+        echo "🎮 Frontend App: $FRONTEND_URL"
+        echo ""
+        echo "📝 Next steps:"
+        echo "1. Set up custom domain mapping for itsgarages.itsfait.com"
+        echo "2. Configure SSL certificate"
+        echo "3. Update DNS records"

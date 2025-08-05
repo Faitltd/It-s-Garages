@@ -35,11 +35,13 @@ const startGameSchema = Joi.object({
 
 const submitGuessSchema = Joi.object({
   sessionId: Joi.number().integer().positive().required(),
-  garageCount: Joi.number().integer().min(0).max(10).required(),
+  garageCount: Joi.number().integer().min(0).max(10).optional(),
   garageWidth: Joi.number().positive().optional(),
   garageHeight: Joi.number().positive().optional(),
   garageType: Joi.string().valid('single', 'double', 'triple', 'commercial', 'other').optional(),
-  confidence: Joi.number().min(0).max(100).default(50)
+  confidence: Joi.number().min(0).max(100).default(50),
+  skipped: Joi.boolean().optional(),
+  notVisible: Joi.boolean().optional()
 });
 
 const startQuestionGameSchema = Joi.object({
@@ -126,7 +128,7 @@ router.post('/guess',
         return next(createError('User not found in request', 401));
       }
 
-      const { sessionId, garageCount, garageWidth, garageHeight, garageType, confidence } = req.body;
+      const { sessionId, garageCount, garageWidth, garageHeight, garageType, confidence, skipped, notVisible } = req.body;
 
       // Validate session belongs to user
       const session = await getGameSession(sessionId, req.user.userId);
@@ -140,11 +142,13 @@ router.post('/guess',
 
       // Calculate score based on accuracy
       const score = await calculateScore(session, {
-        garageCount,
+        garageCount: garageCount || 0,
         garageWidth,
         garageHeight,
         garageType,
-        confidence
+        confidence: confidence || 0,
+        skipped,
+        notVisible
       });
 
       // Update session with guess and score

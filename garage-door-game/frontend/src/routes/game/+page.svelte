@@ -23,6 +23,8 @@
 		garageHeight?: number;
 		garageType?: string;
 		confidence: number;
+		skipped?: boolean;
+		notVisible?: boolean;
 	}
 
 	interface ScoreResult {
@@ -171,7 +173,7 @@
 	}
 
 	// Submit guess
-	async function submitGuess() {
+	async function submitGuess(skip: boolean = false, notVisible: boolean = false) {
 		if (!gameSession || gameCompleted) return;
 
 		loading = true;
@@ -180,11 +182,13 @@
 		try {
 			const guess: GameGuess = {
 				sessionId: gameSession.sessionId,
-				garageCount,
-				garageWidth: garageWidth || undefined,
-				garageHeight: garageHeight || undefined,
-				garageType: garageType || undefined,
-				confidence
+				garageCount: skip || notVisible ? 0 : garageCount,
+				garageWidth: skip || notVisible ? undefined : (garageWidth || undefined),
+				garageHeight: skip || notVisible ? undefined : (garageHeight || undefined),
+				garageType: skip || notVisible ? undefined : (garageType || undefined),
+				confidence: skip || notVisible ? 0 : confidence,
+				skipped: skip,
+				notVisible: notVisible
 			};
 
 			const response = await apiCall('/game/guess', {
@@ -224,6 +228,9 @@
 		confidence = 50;
 		selectedSize = '';
 		selectedType = '';
+
+		// Start a new game immediately
+		startGame('medium');
 	}
 
 	// Format time display
@@ -420,55 +427,74 @@
 			<!-- Results Screen -->
 			<div class="text-center">
 				<div class="text-box power-up">
-					<h1 class="text-2xl mb-4">🎯 LEVEL COMPLETE! 🎯</h1>
+					{#if scoreResult.score === 0}
+						<h1 class="text-2xl mb-4">⏭️ QUESTION SKIPPED ⏭️</h1>
+					{:else}
+						<h1 class="text-2xl mb-4">📊 DATA COLLECTED! 📊</h1>
+					{/if}
 				</div>
 
-				<div class="score-display">
-					<div class="mb-4">
-						<div class="score-number">{scoreResult.score}</div>
-						<div class="text-white">COINS EARNED</div>
-						<div class="flex justify-center mt-2">
-							{#each Array.from({length: Math.min(Math.floor(scoreResult.score / 10), 10)}) as _}
-								<div class="coin"></div>
-							{/each}
+				{#if scoreResult.score > 0}
+					<div class="score-display">
+						<div class="mb-4">
+							<div class="score-number">{scoreResult.score}</div>
+							<div class="text-white">COINS EARNED</div>
+							<div class="flex justify-center mt-2">
+								{#each Array.from({length: Math.min(Math.floor(scoreResult.score / 10), 10)}) as _}
+									<div class="coin"></div>
+								{/each}
+							</div>
+						</div>
+
+						<div class="mb-4">
+							<p class="text-white mt-2">{scoreResult.feedback}</p>
 						</div>
 					</div>
 
-					<div class="mb-4">
-						<div class="text-lg text-yellow-300">ACCURACY: {Math.round(scoreResult.accuracy * 100)}%</div>
-						<p class="text-white mt-2">{scoreResult.feedback}</p>
-					</div>
-				</div>
-
-				<div class="text-box">
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm">
-						<div class="bg-green-800 p-4 border-2 border-white">
-							<div class="text-yellow-300 font-bold mb-2">YOUR GUESS</div>
+					<div class="text-box">
+						<div class="bg-green-800 p-4 border-2 border-white mb-6">
+							<div class="text-yellow-300 font-bold mb-2">YOUR CONTRIBUTION</div>
 							<div class="text-white">🚪 Count: {garageCount}</div>
 							<div class="text-white">🏠 Type: {garageType}</div>
+							{#if garageWidth && garageHeight}
+								<div class="text-white">📏 Size: {garageWidth}' × {garageHeight}'</div>
+							{/if}
 							<div class="text-white">🎯 Confidence: {confidence}%</div>
 						</div>
-						<div class="bg-green-800 p-4 border-2 border-white">
-							<div class="text-lime-300 font-bold mb-2">CORRECT ANSWER</div>
-							<div class="text-white">🚪 Count: {scoreResult.correctAnswer.garageCount}</div>
-							<div class="text-white">🏠 Type: {scoreResult.correctAnswer.garageType}</div>
-							<div class="text-white">📏 Size: {Math.round(scoreResult.correctAnswer.garageWidth)}' × {Math.round(scoreResult.correctAnswer.garageHeight)}'</div>
+
+						<div class="space-y-4">
+							<button
+								on:click={playAgain}
+								class="w-full btn-retro btn-success"
+							>
+								🎮 PLAY AGAIN
+							</button>
+
+							<a href="/leaderboard" class="block w-full btn-retro btn-outline text-center">
+								🏆 HIGH SCORES
+							</a>
 						</div>
 					</div>
+				{:else}
+					<div class="text-box">
+						<div class="mb-6">
+							<p class="text-white">{scoreResult.feedback}</p>
+						</div>
 
-					<div class="space-y-4">
-						<button
-							on:click={playAgain}
-							class="w-full btn-retro btn-success"
-						>
-							🎮 PLAY AGAIN
-						</button>
+						<div class="space-y-4">
+							<button
+								on:click={playAgain}
+								class="w-full btn-retro btn-success"
+							>
+								🎮 PLAY AGAIN
+							</button>
 
-						<a href="/leaderboard" class="block w-full btn-retro btn-outline text-center">
-							🏆 HIGH SCORES
-						</a>
+							<a href="/leaderboard" class="block w-full btn-retro btn-outline text-center">
+								🏆 HIGH SCORES
+							</a>
+						</div>
 					</div>
-				</div>
+				{/if}
 			</div>
 		{:else if gameSession}
 			<!-- Game Play Screen -->
@@ -572,23 +598,7 @@
 							</div>
 						</div>
 
-						<!-- Submit Button -->
-						<div class="text-box text-center">
-							<button
-								on:click={submitGuess}
-								disabled={loading || timeRemaining <= 0 || !garageCount || !selectedType || !selectedSize}
-								class="btn-retro btn-primary w-full"
-							>
-								{#if loading}
-									<div class="flex items-center justify-center">
-										<div class="coin mr-2"></div>
-										SUBMITTING...
-									</div>
-								{:else}
-									🎯 SUBMIT ANSWER
-								{/if}
-							</button>
-						</div>
+
 
 						{#if error}
 							<div class="text-box bg-red-600 text-white text-center">
@@ -599,140 +609,13 @@
 				</div>
 			</div>
 			{:else}
-				<!-- Game Play Interface -->
-				{#if gameSession}
-					<!-- Game Header -->
-					<div class="text-box mb-4">
-						<div class="flex justify-between items-center">
-							<h2 class="text-lg">📍 {gameSession?.location?.address || 'Loading...'}</h2>
-							<div class="text-lg font-bold {timeRemaining <= 10 ? 'text-red-400' : 'text-yellow-300'}">
-								⏱️ {formatTime(timeRemaining)}
-							</div>
-						</div>
-						<div class="text-center mt-2">
-							<span class="text-yellow-300">DIFFICULTY: {gameSession?.difficulty?.toUpperCase() || 'NORMAL'}</span>
-						</div>
-					</div>
-
-					<div class="space-y-4">
-						<!-- Street View Image -->
-						<div class="text-box p-2">
-							<div class="aspect-square border-4 border-white max-w-sm mx-auto bg-green-600 flex items-center justify-center">
-								<img
-									src={gameSession?.streetViewUrl || ''}
-									alt="Street View"
-									class="w-full h-full object-cover"
-									on:error={(e) => {
-										// Hide the broken image and show fallback
-										const target = e.target as HTMLImageElement;
-										if (target && target.parentElement) {
-											target.style.display = 'none';
-											target.parentElement.innerHTML = '<div class="text-white text-center p-8"><div class="text-4xl mb-4">🏠</div><div class="text-lg font-bold">GARAGE DOOR</div><div class="text-sm">DEMO IMAGE</div></div>';
-										}
-									}}
-								/>
-							</div>
-						</div>
-
-						<!-- Game Questions -->
-							<!-- Question 1: Garage Count -->
-							<div class="text-box">
-								<h3 class="text-lg mb-4 text-center">🚪 HOW MANY GARAGE DOORS?</h3>
-								<div class="choice-container">
-									{#each [0, 1, 2, 3, 4] as count}
-										<button
-											class="choice-option {garageCount === count ? 'selected' : ''}"
-											on:click={() => garageCount = count}
-										>
-											{count === 0 ? 'NONE' : count === 4 ? '4+' : count}
-											<br>
-											<small>{count === 0 ? '🚫' : count === 1 ? '🚗' : count === 2 ? '🚗🚗' : count === 3 ? '🚗🚗🚗' : '🚗🚗🚗+'}</small>
-										</button>
-									{/each}
-								</div>
-							</div>
-
-							<!-- Question 2: Garage Type -->
-							<div class="text-box">
-								<h3 class="text-lg mb-4 text-center">🏠 WHAT TYPE OF GARAGE?</h3>
-								<div class="choice-container">
-									{#each garageTypeOptions as option}
-										<button
-											class="choice-option {selectedType === option.value ? 'selected' : ''}"
-											on:click={() => selectType(option)}
-										>
-											{option.emoji}
-											<br>
-											<small>{option.label}</small>
-										</button>
-									{/each}
-								</div>
-							</div>
-
-							<!-- Question 3: Garage Size -->
-							<div class="text-box">
-								<h3 class="text-lg mb-4 text-center">📏 WHAT SIZE IS IT?</h3>
-								<div class="choice-container">
-									{#each garageSizeOptions as option}
-										<button
-											class="choice-option {selectedSize === `${option.width}x${option.height}` ? 'selected' : ''}"
-											on:click={() => selectSize(option)}
-										>
-											{option.label}
-										</button>
-									{/each}
-								</div>
-							</div>
-
-							<!-- Confidence Slider -->
-							<div class="text-box">
-								<h3 class="text-lg mb-4 text-center">🎯 HOW CONFIDENT ARE YOU?</h3>
-								<div class="text-center mb-4">
-									<span class="text-2xl text-yellow-300">{confidence}%</span>
-								</div>
-								<input
-									type="range"
-									bind:value={confidence}
-									min="0"
-									max="100"
-									step="10"
-									class="slider w-full"
-								/>
-								<div class="flex justify-between text-xs text-white mt-2">
-									<span>😕 GUESS</span>
-									<span>😐 MAYBE</span>
-									<span>😊 SURE</span>
-									<span>😎 CERTAIN</span>
-								</div>
-							</div>
-
-							<!-- Submit Button -->
-							<div class="text-box text-center">
-								<button
-									on:click={submitGuess}
-									disabled={loading || timeRemaining <= 0 || !garageCount || !selectedType || !selectedSize}
-									class="btn-retro btn-primary w-full"
-								>
-									{#if loading}
-										<div class="flex items-center justify-center">
-											<div class="coin mr-2"></div>
-											SUBMITTING...
-										</div>
-									{:else}
-										🎯 SUBMIT ANSWER
-									{/if}
-								</button>
-							</div>
-						</div>
-				{:else}
-					<!-- Loading new game -->
-					<div class="text-box text-center">
-						<div class="coin"></div>
-						<div class="coin"></div>
-						<div class="coin"></div>
-						<p class="mt-4">LOADING NEW GAME...</p>
-					</div>
-				{/if}
+				<!-- Loading new game -->
+				<div class="text-box text-center">
+					<div class="coin"></div>
+					<div class="coin"></div>
+					<div class="coin"></div>
+					<p class="mt-4">LOADING NEW GAME...</p>
+				</div>
 			{/if}
 		{/if}
 

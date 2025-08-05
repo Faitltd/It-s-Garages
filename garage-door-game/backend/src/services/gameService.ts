@@ -27,6 +27,8 @@ export interface GameGuess {
   garageHeight?: number;
   garageType?: string;
   confidence: number;
+  skipped?: boolean;
+  notVisible?: boolean;
 }
 
 export interface ScoreResult {
@@ -182,61 +184,69 @@ export const updateGameSession = async (
  * Calculate score based on guess accuracy
  */
 export const calculateScore = async (session: GameSession, guess: GameGuess): Promise<ScoreResult> => {
-  // For now, use mock data for scoring
-  // In the future, this will compare against actual garage door data
-  const mockCorrectAnswer = {
-    garageCount: Math.floor(Math.random() * 3) + 1, // 1-3 garages
-    garageWidth: 8 + Math.random() * 8, // 8-16 feet
-    garageHeight: 7 + Math.random() * 2, // 7-9 feet
-    garageType: ['single', 'double', 'triple'][Math.floor(Math.random() * 3)]
-  };
-
-  // Calculate accuracy for each component
-  const countAccuracy = guess.garageCount === mockCorrectAnswer.garageCount ? 1.0 : 
-                       Math.abs(guess.garageCount - mockCorrectAnswer.garageCount) <= 1 ? 0.5 : 0.0;
-
-  let sizeAccuracy = 0.0;
-  if (guess.garageWidth && guess.garageHeight) {
-    const widthDiff = Math.abs(guess.garageWidth - mockCorrectAnswer.garageWidth) / mockCorrectAnswer.garageWidth;
-    const heightDiff = Math.abs(guess.garageHeight - mockCorrectAnswer.garageHeight) / mockCorrectAnswer.garageHeight;
-    sizeAccuracy = Math.max(0, 1 - (widthDiff + heightDiff) / 2);
+  // Handle skipped questions
+  if (guess.skipped) {
+    return {
+      points: 0,
+      accuracy: 0,
+      feedback: 'Question skipped. No points awarded.',
+      correctAnswer: null,
+      breakdown: {
+        countAccuracy: 0,
+        sizeAccuracy: 0,
+        typeAccuracy: 0,
+        confidenceBonus: 0,
+        timeBonus: 0
+      }
+    };
   }
 
-  const typeAccuracy = guess.garageType === mockCorrectAnswer.garageType ? 1.0 : 0.0;
-
-  // Calculate bonuses
-  const confidenceBonus = guess.confidence / 100 * 0.2; // Up to 20% bonus
-  const timeBonus = 0.1; // Simplified time bonus
-
-  // Calculate overall accuracy and points
-  const overallAccuracy = (countAccuracy * 0.5 + sizeAccuracy * 0.3 + typeAccuracy * 0.2);
-  const basePoints = Math.floor(overallAccuracy * 100);
-  const bonusPoints = Math.floor(basePoints * (confidenceBonus + timeBonus));
-  const totalPoints = basePoints + bonusPoints;
-
-  // Generate feedback
-  let feedback = '';
-  if (overallAccuracy >= 0.8) {
-    feedback = 'Excellent! You have a great eye for garage doors!';
-  } else if (overallAccuracy >= 0.6) {
-    feedback = 'Good job! You got most of the details right.';
-  } else if (overallAccuracy >= 0.4) {
-    feedback = 'Not bad, but there\'s room for improvement.';
-  } else {
-    feedback = 'Keep practicing! Garage door identification takes time to master.';
+  // Handle "garage not visible" submissions
+  if (guess.notVisible) {
+    return {
+      points: 0,
+      accuracy: 0,
+      feedback: 'Address marked as "garage not visible". This address will not appear in future games.',
+      correctAnswer: null,
+      breakdown: {
+        countAccuracy: 0,
+        sizeAccuracy: 0,
+        typeAccuracy: 0,
+        confidenceBonus: 0,
+        timeBonus: 0
+      }
+    };
   }
+
+  // This is a data collection game - award points for participation
+  // No "correct" answers since we're collecting the data
+
+  let basePoints = 50; // Base points for participation
+
+  // Confidence bonus (higher confidence = more points)
+  const confidenceBonus = Math.floor((guess.confidence / 100) * 30);
+
+  // Completeness bonus (providing all details)
+  let completenessBonus = 0;
+  if (guess.garageWidth && guess.garageHeight) completenessBonus += 10;
+  if (guess.garageType && guess.garageType !== 'unknown') completenessBonus += 10;
+
+  const totalPoints = basePoints + confidenceBonus + completenessBonus;
+
+  // Generate encouraging feedback for data collection
+  const feedback = 'Thank you for contributing to our garage door database! Your observations help improve our system.';
 
   return {
     points: totalPoints,
-    accuracy: overallAccuracy,
+    accuracy: 1.0, // Always 100% since we're collecting data, not testing
     feedback,
-    correctAnswer: mockCorrectAnswer,
+    correctAnswer: null, // No "correct" answer in data collection
     breakdown: {
-      countAccuracy,
-      sizeAccuracy,
-      typeAccuracy,
-      confidenceBonus,
-      timeBonus
+      countAccuracy: 1.0,
+      sizeAccuracy: guess.garageWidth && guess.garageHeight ? 1.0 : 0.0,
+      typeAccuracy: guess.garageType && guess.garageType !== 'unknown' ? 1.0 : 0.0,
+      confidenceBonus: confidenceBonus / totalPoints,
+      timeBonus: completenessBonus / totalPoints
     }
   };
 };

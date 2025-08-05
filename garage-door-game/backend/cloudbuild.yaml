@@ -1,0 +1,22 @@
+# Cloud Build configuration for Backend
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/garage-door-backend:$COMMIT_SHA', '.']
+  
+  # Push the image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/garage-door-backend:$COMMIT_SHA']
+
+# Store the image in Container Registry
+images:
+  - 'gcr.io/$PROJECT_ID/garage-door-backend:$COMMIT_SHA'
+
+# Build options
+options:
+  machineType: 'E2_HIGHCPU_8'
+  diskSizeGb: 100
+  logging: CLOUD_LOGGING_ONLY
+
+# Timeout
+timeout: '1200s'
