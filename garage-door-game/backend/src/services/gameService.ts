@@ -1,5 +1,6 @@
 import { db } from '../config/database';
 import { googleApiService } from './googleApiService';
+import { getRandomCentennialAddress } from './centennialAddressService';
 
 export interface GameSession {
   id: number;
@@ -314,45 +315,22 @@ export const updateUserStats = async (userId: number, points: number, accuracy: 
  * Generate random residential location for game - ONLY HOME ADDRESSES
  * All locations are verified residential addresses with houses that have garage doors
  */
-export const generateRandomLocation = (difficulty: string): { lat: number; lng: number; address: string } => {
-  // Curated residential addresses with confirmed garage doors
-  // All coordinates are specifically chosen for suburban residential areas
-  const residentialLocations = {
-    easy: [
-      // Suburban neighborhoods with clear, visible garage doors
-      { lat: 40.7589, lng: -73.9851, address: '1247 Residential Ave, Queens, NY' },
-      { lat: 34.0928, lng: -118.3287, address: '2156 Suburban Dr, Beverly Hills, CA' },
-      { lat: 41.8369, lng: -87.6847, address: '3789 Family Ln, Chicago, IL' },
-      { lat: 33.7490, lng: -84.3880, address: '4321 Home St, Atlanta, GA' },
-      { lat: 39.2904, lng: -76.6122, address: '5654 House Rd, Baltimore, MD' },
-      { lat: 32.7767, lng: -96.7970, address: '6987 Garage Way, Dallas, TX' },
-      { lat: 29.7604, lng: -95.3698, address: '7123 Driveway Ct, Houston, TX' }
-    ],
-    medium: [
-      // Mixed residential areas with various garage door styles
-      { lat: 39.7392, lng: -104.9903, address: '8456 Residential Blvd, Denver, CO' },
-      { lat: 30.2672, lng: -97.7431, address: '9789 Suburban Cir, Austin, TX' },
-      { lat: 47.6062, lng: -122.3321, address: '1357 Family Ave, Seattle, WA' },
-      { lat: 36.1627, lng: -86.7816, address: '2468 Home Dr, Nashville, TN' },
-      { lat: 35.2271, lng: -80.8431, address: '3691 House Ln, Charlotte, NC' },
-      { lat: 33.4484, lng: -112.0740, address: '4825 Garage St, Phoenix, AZ' },
-      { lat: 25.7617, lng: -80.1918, address: '5937 Driveway Rd, Miami, FL' }
-    ],
-    hard: [
-      // Challenging residential areas with complex garage configurations
-      { lat: 37.7749, lng: -122.4194, address: '6148 Hillside Dr, San Francisco, CA' },
-      { lat: 45.5152, lng: -122.6784, address: '7259 Residential Way, Portland, OR' },
-      { lat: 42.3601, lng: -71.0589, address: '8371 Suburban St, Boston, MA' },
-      { lat: 39.9526, lng: -75.1652, address: '9482 Family Ct, Philadelphia, PA' },
-      { lat: 44.9537, lng: -93.0900, address: '1593 Home Ave, Minneapolis, MN' },
-      { lat: 43.0389, lng: -87.9065, address: '2614 House Blvd, Milwaukee, WI' },
-      { lat: 41.4993, lng: -81.6944, address: '3725 Garage Ln, Cleveland, OH' }
-    ]
-  };
+export const generateRandomLocation = async (difficulty: string): Promise<{ lat: number; lng: number; address: string } | null> => {
+  try {
+    const centennialAddress = await getRandomCentennialAddress();
+    if (!centennialAddress) {
+      return null;
+    }
 
-  const difficultyLocations = residentialLocations[difficulty as keyof typeof residentialLocations] || residentialLocations.medium;
-  const randomIndex = Math.floor(Math.random() * difficultyLocations.length);
-  return difficultyLocations[randomIndex] as { lat: number; lng: number; address: string };
+    return {
+      lat: centennialAddress.latitude,
+      lng: centennialAddress.longitude,
+      address: centennialAddress.address
+    };
+  } catch (error) {
+    console.error('Error getting random Centennial address for game:', error);
+    return null;
+  }
 };
 
 /**

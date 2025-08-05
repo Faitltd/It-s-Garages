@@ -73,7 +73,10 @@ router.post('/start',
       // Generate random location if not provided
       let gameLocation = location;
       if (!gameLocation) {
-        gameLocation = generateRandomLocation(difficulty || 'medium');
+        gameLocation = await generateRandomLocation(difficulty || 'medium');
+        if (!gameLocation) {
+          return next(createError('No addresses available for game', 404));
+        }
       }
 
       // Build Street View URL optimized for residential garage door viewing
