@@ -39,7 +39,7 @@ gcloud run deploy $BACKEND_SERVICE \
   --set-env-vars JWT_SECRET=garage-door-production-jwt-secret-2024 \
   --set-env-vars GOOGLE_STREET_VIEW_API_KEY=AIzaSyBiVQb3x1YxwcqaPLuuSAyw2mnWybmxtQE \
   --set-env-vars GOOGLE_MAPS_API_KEY=AIzaSyBiVQb3x1YxwcqaPLuuSAyw2mnWybmxtQE \
-  --set-env-vars CORS_ORIGIN=https://garage-door-frontend-341270520862.us-central1.run.app
+  --set-env-vars CORS_ORIGIN=https://itsgarages.itsfait.com
 
 # Get backend URL
 BACKEND_URL=$(gcloud run services describe $BACKEND_SERVICE --platform managed --region $REGION --format 'value(status.url)')
