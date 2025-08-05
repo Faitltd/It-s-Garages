@@ -28,6 +28,7 @@
   "type": "commonjs",
   "dependencies": {
     "@types/cookie-parser": "^1.4.9",
+    "@types/node-fetch": "^2.6.11",
     "bcryptjs": "^3.0.2",
     "bottleneck": "^2.19.5",
     "cookie-parser": "^1.4.7",
@@ -42,7 +43,7 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
-    "node-fetch": "^3.3.2",
+    "node-fetch": "^2.7.0",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
