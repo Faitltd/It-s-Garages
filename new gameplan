@@ -1,0 +1,1438 @@
+# Garage Door Data Collection Game - Implementation Plan
+
+## Phase 1: Project Setup
+
+### 1.1 Initialize Project Structure
+1. Create new directory: `garage-door-game`
+2. Open terminal in project directory
+3. Run: `npm create svelte@latest frontend`
+4. Select: Skeleton project, TypeScript, ESLint, Prettier
+5. Run: `cd frontend && npm install`
+6. Create backend directory: `mkdir backend`
+7. Initialize backend: `cd backend && npm init -y`
+8. Install backend dependencies: `npm install express cors helmet morgan bcryptjs jsonwebtoken multer sqlite3 node-cron dotenv`
+9. Install dev dependencies: `npm install --save-dev nodemon @types/node typescript ts-node`
+
+### 1.2 Environment Setup
+1. Create `.env` file in backend directory
+2. Add variables:
+   ```
+   PORT=3001
+   JWT_SECRET=your_jwt_secret_here
+   GOOGLE_MAPS_API_KEY=your_google_maps_key
+   DATABASE_PATH=./database.db
+   ```
+3. Create `.env` file in frontend directory
+4. Add variables:
+   ```
+   VITE_API_URL=http://localhost:3001
+   VITE_GOOGLE_MAPS_API_KEY=your_google_maps_key
+   ```
+
+## Phase 2: Database Design
+
+### 2.1 Create Database Schema
+1. Create file: `backend/database/schema.sql`
+2. Add table definitions:
+   ```sql
+   CREATE TABLE users (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     username TEXT UNIQUE NOT NULL,
+     email TEXT UNIQUE NOT NULL,
+     password_hash TEXT NOT NULL,
+     total_points INTEGER DEFAULT 0,
+     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+   );
+
+   CREATE TABLE jobs (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     user_id INTEGER NOT NULL,
+     address TEXT NOT NULL,
+     latitude REAL,
+     longitude REAL,
+     door_size TEXT NOT NULL,
+     neighborhood TEXT,
+     street_name TEXT,
+     landmark TEXT,
+     points_awarded INTEGER DEFAULT 10,
+     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+     FOREIGN KEY (user_id) REFERENCES users (id)
+   );
+
+   CREATE TABLE game_questions (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     address TEXT NOT NULL,
+     image_url TEXT NOT NULL,
+     correct_answer TEXT NOT NULL,
+     option_a TEXT NOT NULL,
+     option_b TEXT NOT NULL,
+     option_c TEXT NOT NULL,
+     option_d TEXT NOT NULL,
+     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+   );
+
+   CREATE TABLE user_scores (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     user_id INTEGER NOT NULL,
+     question_id INTEGER NOT NULL,
+     selected_answer TEXT NOT NULL,
+     is_correct BOOLEAN NOT NULL,
+     time_taken INTEGER NOT NULL,
+     points_awarded INTEGER NOT NULL,
+     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+     FOREIGN KEY (user_id) REFERENCES users (id),
+     FOREIGN KEY (question_id) REFERENCES game_questions (id)
+   );
+
+   CREATE TABLE raffles (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     title TEXT NOT NULL,
+     description TEXT,
+     points_required INTEGER NOT NULL,
+     start_date DATETIME NOT NULL,
+     end_date DATETIME NOT NULL,
+     winner_id INTEGER,
+     is_active BOOLEAN DEFAULT 1,
+     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+     FOREIGN KEY (winner_id) REFERENCES users (id)
+   );
+   ```
+
+### 2.2 Create Database Initialization
+1. Create file: `backend/database/init.js`
+2. Add initialization code:
+   ```javascript
+   const sqlite3 = require('sqlite3').verbose();
+   const fs = require('fs');
+   const path = require('path');
+
+   const dbPath = process.env.DATABASE_PATH || './database.db';
+   const schemaPath = path.join(__dirname, 'schema.sql');
+
+   function initDatabase() {
+     const db = new sqlite3.Database(dbPath);
+     const schema = fs.readFileSync(schemaPath, 'utf8');
+     
+     db.exec(schema, (err) => {
+       if (err) {
+         console.error('Error creating database:', err);
+       } else {
+         console.log('Database initialized successfully');
+       }
+       db.close();
+     });
+   }
+
+   module.exports = { initDatabase };
+   ```
+
+## Phase 3: Backend API Development
+
+### 3.1 Create Express Server
+1. Create file: `backend/server.js`
+2. Add server setup:
+   ```javascript
+   require('dotenv').config();
+   const express = require('express');
+   const cors = require('cors');
+   const helmet = require('helmet');
+   const morgan = require('morgan');
+   const { initDatabase } = require('./database/init');
+
+   const authRoutes = require('./routes/auth');
+   const jobRoutes = require('./routes/jobs');
+   const gameRoutes = require('./routes/game');
+   const leaderboardRoutes = require('./routes/leaderboard');
+
+   const app = express();
+   const PORT = process.env.PORT || 3001;
+
+   // Initialize database
+   initDatabase();
+
+   // Middleware
+   app.use(helmet());
+   app.use(cors());
+   app.use(morgan('combined'));
+   app.use(express.json());
+
+   // Routes
+   app.use('/api/auth', authRoutes);
+   app.use('/api/jobs', jobRoutes);
+   app.use('/api/game', gameRoutes);
+   app.use('/api/leaderboard', leaderboardRoutes);
+
+   app.listen(PORT, () => {
+     console.log(`Server running on port ${PORT}`);
+   });
+   ```
+
+### 3.2 Create Authentication Routes
+1. Create directory: `backend/routes`
+2. Create file: `backend/routes/auth.js`
+3. Add authentication endpoints:
+   ```javascript
+   const express = require('express');
+   const bcrypt = require('bcryptjs');
+   const jwt = require('jsonwebtoken');
+   const sqlite3 = require('sqlite3').verbose();
+   const router = express.Router();
+
+   const db = new sqlite3.Database(process.env.DATABASE_PATH);
+
+   // Register endpoint
+   router.post('/register', async (req, res) => {
+     const { username, email, password } = req.body;
+     const hashedPassword = await bcrypt.hash(password, 10);
+     
+     db.run(
+       'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
+       [username, email, hashedPassword],
+       function(err) {
+         if (err) {
+           return res.status(400).json({ error: 'User already exists' });
+         }
+         
+         const token = jwt.sign({ userId: this.lastID }, process.env.JWT_SECRET);
+         res.json({ token, userId: this.lastID, username });
+       }
+     );
+   });
+
+   // Login endpoint
+   router.post('/login', (req, res) => {
+     const { username, password } = req.body;
+     
+     db.get(
+       'SELECT * FROM users WHERE username = ?',
+       [username],
+       async (err, user) => {
+         if (err || !user) {
+           return res.status(400).json({ error: 'Invalid credentials' });
+         }
+         
+         const isValid = await bcrypt.compare(password, user.password_hash);
+         if (!isValid) {
+           return res.status(400).json({ error: 'Invalid credentials' });
+         }
+         
+         const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET);
+         res.json({ token, userId: user.id, username: user.username });
+       }
+     );
+   });
+
+   module.exports = router;
+   ```
+
+### 3.3 Create Job Entry Routes
+1. Create file: `backend/routes/jobs.js`
+2. Add job management endpoints:
+   ```javascript
+   const express = require('express');
+   const sqlite3 = require('sqlite3').verbose();
+   const { verifyToken } = require('../middleware/auth');
+   const router = express.Router();
+
+   const db = new sqlite3.Database(process.env.DATABASE_PATH);
+
+   // Submit job
+   router.post('/', verifyToken, (req, res) => {
+     const { address, doorSize, neighborhood, streetName, landmark } = req.body;
+     let points = 10; // Base points
+     
+     if (neighborhood) points += 5;
+     if (streetName) points += 5;
+     if (landmark) points += 10;
+     
+     db.run(
+       `INSERT INTO jobs (user_id, address, door_size, neighborhood, street_name, landmark, points_awarded) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       [req.userId, address, doorSize, neighborhood, streetName, landmark, points],
+       function(err) {
+         if (err) {
+           return res.status(500).json({ error: 'Failed to save job' });
+         }
+         
+         // Update user total points
+         db.run(
+           'UPDATE users SET total_points = total_points + ? WHERE id = ?',
+           [points, req.userId]
+         );
+         
+         res.json({ jobId: this.lastID, pointsAwarded: points });
+       }
+     );
+   });
+
+   module.exports = router;
+   ```
+
+### 3.4 Create Game Routes
+1. Create file: `backend/routes/game.js`
+2. Add game endpoints:
+   ```javascript
+   const express = require('express');
+   const sqlite3 = require('sqlite3').verbose();
+   const { verifyToken } = require('../middleware/auth');
+   const router = express.Router();
+
+   const db = new sqlite3.Database(process.env.DATABASE_PATH);
+
+   // Get random question
+   router.get('/question', verifyToken, (req, res) => {
+     db.get(
+       'SELECT * FROM game_questions ORDER BY RANDOM() LIMIT 1',
+       (err, question) => {
+         if (err || !question) {
+           return res.status(404).json({ error: 'No questions available' });
+         }
+         res.json(question);
+       }
+     );
+   });
+
+   // Submit answer
+   router.post('/answer', verifyToken, (req, res) => {
+     const { questionId, selectedAnswer, timeTaken } = req.body;
+     
+     db.get(
+       'SELECT correct_answer FROM game_questions WHERE id = ?',
+       [questionId],
+       (err, question) => {
+         if (err || !question) {
+           return res.status(404).json({ error: 'Question not found' });
+         }
+         
+         const isCorrect = selectedAnswer === question.correct_answer;
+         let points = 0;
+         
+         if (isCorrect) {
+           points = 20;
+           if (timeTaken < 15) points += 10; // Speed bonus
+         }
+         
+         db.run(
+           `INSERT INTO user_scores (user_id, question_id, selected_answer, is_correct, time_taken, points_awarded)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+           [req.userId, questionId, selectedAnswer, isCorrect, timeTaken, points],
+           function(err) {
+             if (err) {
+               return res.status(500).json({ error: 'Failed to save score' });
+             }
+             
+             // Update user total points
+             db.run(
+               'UPDATE users SET total_points = total_points + ? WHERE id = ?',
+               [points, req.userId]
+             );
+             
+             res.json({ 
+               correct: isCorrect, 
+               correctAnswer: question.correct_answer,
+               pointsAwarded: points 
+             });
+           }
+         );
+       }
+     );
+   });
+
+   module.exports = router;
+   ```
+
+### 3.5 Create Authentication Middleware
+1. Create directory: `backend/middleware`
+2. Create file: `backend/middleware/auth.js`
+3. Add token verification:
+   ```javascript
+   const jwt = require('jsonwebtoken');
+
+   function verifyToken(req, res, next) {
+     const token = req.header('Authorization')?.replace('Bearer ', '');
+     
+     if (!token) {
+       return res.status(401).json({ error: 'Access denied' });
+     }
+     
+     try {
+       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+       req.userId = decoded.userId;
+       next();
+     } catch (error) {
+       res.status(400).json({ error: 'Invalid token' });
+     }
+   }
+
+   module.exports = { verifyToken };
+   ```
+
+## Phase 4: Frontend Svelte Development
+
+### 4.1 Setup Svelte Stores
+1. Create directory: `frontend/src/stores`
+2. Create file: `frontend/src/stores/auth.js`
+3. Add authentication store:
+   ```javascript
+   import { writable } from 'svelte/store';
+
+   export const user = writable(null);
+   export const token = writable(localStorage.getItem('token') || null);
+
+   export function login(userData, authToken) {
+     user.set(userData);
+     token.set(authToken);
+     localStorage.setItem('token', authToken);
+     localStorage.setItem('user', JSON.stringify(userData));
+   }
+
+   export function logout() {
+     user.set(null);
+     token.set(null);
+     localStorage.removeItem('token');
+     localStorage.removeItem('user');
+   }
+   ```
+
+4. Create file: `frontend/src/stores/points.js`
+5. Add points store:
+   ```javascript
+   import { writable } from 'svelte/store';
+
+   export const totalPoints = writable(0);
+   export const recentPoints = writable(0);
+   ```
+
+### 4.2 Create Main Layout
+1. Edit file: `frontend/src/app.html`
+2. Add Google Maps script:
+   ```html
+   <!DOCTYPE html>
+   <html lang="en">
+   <head>
+     <meta charset="utf-8" />
+     <link rel="icon" href="%sveltekit.assets%/favicon.png" />
+     <meta name="viewport" content="width=device-width" />
+     %sveltekit.head%
+     <script src="https://maps.googleapis.com/maps/api/js?key=%VITE_GOOGLE_MAPS_API_KEY%&libraries=places"></script>
+   </head>
+   <body data-sveltekit-preload-data="hover">
+     <div style="display: contents">%sveltekit.body%</div>
+   </body>
+   </html>
+   ```
+
+3. Create file: `frontend/src/routes/+layout.svelte`
+4. Add navigation layout:
+   ```svelte
+   <script>
+     import { user, logout } from '../stores/auth.js';
+     import { totalPoints } from '../stores/points.js';
+     import { onMount } from 'svelte';
+
+     onMount(() => {
+       const savedUser = localStorage.getItem('user');
+       if (savedUser) {
+         user.set(JSON.parse(savedUser));
+       }
+     });
+
+     function handleLogout() {
+       logout();
+       window.location.href = '/';
+     }
+   </script>
+
+   <nav class="navbar">
+     <div class="nav-brand">
+       <h1>Garage Door Game</h1>
+     </div>
+     {#if $user}
+       <div class="nav-items">
+         <span class="points">Points: {$totalPoints}</span>
+         <a href="/dashboard">Dashboard</a>
+         <a href="/job-entry">Add Job</a>
+         <a href="/game">Play Game</a>
+         <a href="/leaderboard">Leaderboard</a>
+         <button on:click={handleLogout}>Logout</button>
+       </div>
+     {/if}
+   </nav>
+
+   <main>
+     <slot />
+   </main>
+
+   <style>
+     .navbar {
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       padding: 1rem 2rem;
+       background: #2c3e50;
+       color: white;
+     }
+     
+     .nav-items {
+       display: flex;
+       gap: 1rem;
+       align-items: center;
+     }
+     
+     .nav-items a {
+       color: white;
+       text-decoration: none;
+       padding: 0.5rem 1rem;
+       border-radius: 4px;
+       transition: background 0.2s;
+     }
+     
+     .nav-items a:hover {
+       background: rgba(255,255,255,0.1);
+     }
+     
+     .points {
+       font-weight: bold;
+       background: #e74c3c;
+       padding: 0.5rem 1rem;
+       border-radius: 20px;
+     }
+     
+     button {
+       background: #e74c3c;
+       color: white;
+       border: none;
+       padding: 0.5rem 1rem;
+       border-radius: 4px;
+       cursor: pointer;
+     }
+     
+     main {
+       padding: 2rem;
+       max-width: 1200px;
+       margin: 0 auto;
+     }
+   </style>
+   ```
+
+### 4.3 Create Authentication Pages
+1. Create file: `frontend/src/routes/+page.svelte`
+2. Add login/register page:
+   ```svelte
+   <script>
+     import { login, user } from '../stores/auth.js';
+     import { goto } from '$app/navigation';
+     import { onMount } from 'svelte';
+
+     let isLogin = true;
+     let username = '';
+     let email = '';
+     let password = '';
+     let error = '';
+
+     onMount(() => {
+       if ($user) {
+         goto('/dashboard');
+       }
+     });
+
+     async function handleSubmit() {
+       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+       const body = isLogin 
+         ? { username, password }
+         : { username, email, password };
+
+       try {
+         const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify(body)
+         });
+
+         const data = await response.json();
+
+         if (response.ok) {
+           login({ id: data.userId, username: data.username }, data.token);
+           goto('/dashboard');
+         } else {
+           error = data.error;
+         }
+       } catch (err) {
+         error = 'Network error';
+       }
+     }
+   </script>
+
+   <div class="auth-container">
+     <div class="auth-form">
+       <h2>{isLogin ? 'Login' : 'Register'}</h2>
+       
+       {#if error}
+         <div class="error">{error}</div>
+       {/if}
+
+       <form on:submit|preventDefault={handleSubmit}>
+         <input
+           type="text"
+           placeholder="Username"
+           bind:value={username}
+           required
+         />
+         
+         {#if !isLogin}
+           <input
+             type="email"
+             placeholder="Email"
+             bind:value={email}
+             required
+           />
+         {/if}
+         
+         <input
+           type="password"
+           placeholder="Password"
+           bind:value={password}
+           required
+         />
+         
+         <button type="submit">
+           {isLogin ? 'Login' : 'Register'}
+         </button>
+       </form>
+
+       <p>
+         {isLogin ? "Don't have an account?" : "Already have an account?"}
+         <button 
+           class="link-button" 
+           on:click={() => isLogin = !isLogin}
+         >
+           {isLogin ? 'Register' : 'Login'}
+         </button>
+       </p>
+     </div>
+   </div>
+
+   <style>
+     .auth-container {
+       display: flex;
+       justify-content: center;
+       align-items: center;
+       min-height: 80vh;
+     }
+     
+     .auth-form {
+       background: white;
+       padding: 2rem;
+       border-radius: 8px;
+       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+       width: 100%;
+       max-width: 400px;
+     }
+     
+     .auth-form h2 {
+       text-align: center;
+       margin-bottom: 1.5rem;
+       color: #2c3e50;
+     }
+     
+     .auth-form input {
+       width: 100%;
+       padding: 0.75rem;
+       margin-bottom: 1rem;
+       border: 1px solid #ddd;
+       border-radius: 4px;
+       font-size: 1rem;
+     }
+     
+     .auth-form button {
+       width: 100%;
+       padding: 0.75rem;
+       background: #3498db;
+       color: white;
+       border: none;
+       border-radius: 4px;
+       font-size: 1rem;
+       cursor: pointer;
+     }
+     
+     .auth-form button:hover {
+       background: #2980b9;
+     }
+     
+     .link-button {
+       background: none;
+       border: none;
+       color: #3498db;
+       text-decoration: underline;
+       cursor: pointer;
+       padding: 0;
+       width: auto;
+     }
+     
+     .error {
+       background: #e74c3c;
+       color: white;
+       padding: 0.5rem;
+       border-radius: 4px;
+       margin-bottom: 1rem;
+       text-align: center;
+     }
+   </style>
+   ```
+
+### 4.4 Create Dashboard Page
+1. Create file: `frontend/src/routes/dashboard/+page.svelte`
+2. Add dashboard content:
+   ```svelte
+   <script>
+     import { user } from '../../stores/auth.js';
+     import { totalPoints } from '../../stores/points.js';
+     import { onMount } from 'svelte';
+
+     let recentJobs = [];
+     let gameStats = { played: 0, correct: 0, accuracy: 0 };
+
+     onMount(async () => {
+       await loadUserStats();
+     });
+
+     async function loadUserStats() {
+       // Load user's total points, recent jobs, and game statistics
+       // Implementation would fetch from API endpoints
+     }
+   </script>
+
+   <div class="dashboard">
+     <h1>Welcome back, {$user?.username}!</h1>
+     
+     <div class="stats-grid">
+       <div class="stat-card">
+         <h3>Total Points</h3>
+         <p class="stat-number">{$totalPoints}</p>
+       </div>
+       
+       <div class="stat-card">
+         <h3>Jobs Submitted</h3>
+         <p class="stat-number">{recentJobs.length}</p>
+       </div>
+       
+       <div class="stat-card">
+         <h3>Game Accuracy</h3>
+         <p class="stat-number">{gameStats.accuracy}%</p>
+       </div>
+     </div>
+
+     <div class="action-buttons">
+       <a href="/job-entry" class="action-btn primary">
+         Submit New Job
+       </a>
+       <a href="/game" class="action-btn secondary">
+         Play Game
+       </a>
+       <a href="/leaderboard" class="action-btn tertiary">
+         View Leaderboard
+       </a>
+     </div>
+   </div>
+
+   <style>
+     .dashboard {
+       max-width: 800px;
+       margin: 0 auto;
+     }
+     
+     .stats-grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+       gap: 1rem;
+       margin: 2rem 0;
+     }
+     
+     .stat-card {
+       background: white;
+       padding: 1.5rem;
+       border-radius: 8px;
+       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+       text-align: center;
+     }
+     
+     .stat-number {
+       font-size: 2rem;
+       font-weight: bold;
+       color: #3498db;
+       margin: 0.5rem 0;
+     }
+     
+     .action-buttons {
+       display: flex;
+       gap: 1rem;
+       justify-content: center;
+       flex-wrap: wrap;
+     }
+     
+     .action-btn {
+       padding: 1rem 2rem;
+       text-decoration: none;
+       border-radius: 8px;
+       font-weight: bold;
+       text-align: center;
+       transition: transform 0.2s;
+     }
+     
+     .action-btn:hover {
+       transform: translateY(-2px);
+     }
+     
+     .primary { background: #3498db; color: white; }
+     .secondary { background: #2ecc71; color: white; }
+     .tertiary { background: #e74c3c; color: white; }
+   </style>
+   ```
+
+### 4.5 Create Job Entry Page
+1. Create file: `frontend/src/routes/job-entry/+page.svelte`
+2. Add job entry form:
+   ```svelte
+   <script>
+     import { token } from '../../stores/auth.js';
+     import { goto } from '$app/navigation';
+
+     let address = '';
+     let doorSize = '';
+     let neighborhood = '';
+     let streetName = '';
+     let landmark = '';
+     let isSubmitting = false;
+     let message = '';
+
+     const doorSizes = [
+       '8x7 feet',
+       '9x7 feet',
+       '16x7 feet (double)',
+       '18x8 feet (double)',
+       'Custom size'
+     ];
+
+     async function submitJob() {
+       if (!address || !doorSize) {
+         message = 'Address and door size are required';
+         return;
+       }
+
+       isSubmitting = true;
+
+       try {
+         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/jobs`, {
+           method: 'POST',
+           headers: {
+             'Content-Type': 'application/json',
+             'Authorization': `Bearer ${$token}`
+           },
+           body: JSON.stringify({
+             address,
+             doorSize,
+             neighborhood,
+             streetName,
+             landmark
+           })
+         });
+
+         const data = await response.json();
+
+         if (response.ok) {
+           message = `Job submitted! You earned ${data.pointsAwarded} points.`;
+           // Reset form
+           address = '';
+           doorSize = '';
+           neighborhood = '';
+           streetName = '';
+           landmark = '';
+           
+           setTimeout(() => goto('/dashboard'), 2000);
+         } else {
+           message = data.error;
+         }
+       } catch (error) {
+         message = 'Network error occurred';
+       }
+
+       isSubmitting = false;
+     }
+   </script>
+
+   <div class="job-entry">
+     <h1>Submit Job Data</h1>
+     
+     {#if message}
+       <div class="message {message.includes('earned') ? 'success' : 'error'}">
+         {message}
+       </div>
+     {/if}
+
+     <form on:submit|preventDefault={submitJob}>
+       <div class="form-group">
+         <label for="address">Job Address *</label>
+         <input
+           id="address"
+           type="text"
+           bind:value={address}
+           placeholder="123 Main St, City, State"
+           required
+         />
+       </div>
+
+       <div class="form-group">
+         <label for="doorSize">Garage Door Size *</label>
+         <select id="doorSize" bind:value={doorSize} required>
+           <option value="">Select door size</option>
+           {#each doorSizes as size}
+             <option value={size}>{size}</option>
+           {/each}
+         </select>
+       </div>
+
+       <div class="form-group">
+         <label for="neighborhood">Neighborhood (+5 points)</label>
+         <input
+           id="neighborhood"
+           type="text"
+           bind:value={neighborhood}
+           placeholder="Downtown, Suburbs, etc."
+         />
+       </div>
+
+       <div class="form-group">
+         <label for="streetName">Street Name (+5 points)</label>
+         <input
+           id="streetName"
+           type="text"
+           bind:value={streetName}
+           placeholder="Main Street, Oak Avenue, etc."
+         />
+       </div>
+
+       <div class="form-group">
+         <label for="landmark">Nearby Landmark (+10 points)</label>
+         <input
+           id="landmark"
+           type="text"
+           bind:value={landmark}
+           placeholder="School, park, shopping center, etc."
+         />
+       </div>
+
+       <button type="submit" disabled={isSubmitting}>
+         {isSubmitting ? 'Submitting...' : 'Submit Job'}
+       </button>
+     </form>
+   </div>
+
+   <style>
+     .job-entry {
+       max-width: 600px;
+       margin: 0 auto;
+     }
+
+     .form-group {
+       margin-bottom: 1.5rem;
+     }
+
+     label {
+       display: block;
+       margin-bottom: 0.5rem;
+       font-weight: bold;
+       color: #2c3e50;
+     }
+
+     input, select {
+       width: 100%;
+       padding: 0.75rem;
+       border: 1px solid #ddd;
+       border-radius: 4px;
+       font-size: 1rem;
+     }
+
+     button {
+       width: 100%;
+       padding: 1rem;
+       background: #3498db;
+       color: white;
+       border: none;
+       border-radius: 4px;
+       font-size: 1.1rem;
+       cursor: pointer;
+       transition: background 0.2s;
+     }
+
+     button:hover:not(:disabled) {
+       background: #2980b9;
+     }
+
+     button:disabled {
+       background: #bdc3c7;
+       cursor: not-allowed;
+     }
+
+     .message {
+       padding: 1rem;
+       border-radius: 4px;
+       margin-bottom: 1rem;
+       text-align: center;
+     }
+
+     .success {
+       background: #d4edda;
+       color: #155724;
+       border: 1px solid #c3e6cb;
+     }
+
+     .error {
+       background: #f8d7da;
+       color: #721c24;
+       border: 1px solid #f5c6cb;
+     }
+   </style>
+   ```
+
+### 4.6 Create Game Page
+1. Create file: `frontend/src/routes/game/+page.svelte`
+2. Add game interface:
+   ```svelte
+   <script>
+     import { token } from '../../stores/auth.js';
+     import { onMount } from 'svelte';
+
+     let currentQuestion = null;
+     let selectedAnswer = '';
+     let timeLeft = 30;
+     let gameActive = false;
+     let timer = null;
+     let result = null;
+     let loading = false;
+
+     onMount(() => {
+       loadQuestion();
+     });
+
+     async function loadQuestion() {
+       loading = true;
+       try {
+         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/game/question`, {
+           headers: { 'Authorization': `Bearer ${$token}` }
+         });
+         
+         if (response.ok) {
+           currentQuestion = await response.json();
+           startTimer();
+         }
+       } catch (error) {
+         console.error('Failed to load question:', error);
+       }
+       loading = false;
+     }
+
+     function startTimer() {
+       timeLeft = 30;
+       gameActive = true;
+       selectedAnswer = '';
+       result = null;
+       
+       timer = setInterval(() => {
+         timeLeft--;
+         if (timeLeft <= 0) {
+           submitAnswer();
+         }
+       }, 1000);
+     }
+
+     async function submitAnswer() {
+       if (!gameActive) return;
+       
+       clearInterval(timer);
+       gameActive = false;
+       
+       const timeTaken = 30 - timeLeft;
+       
+       try {
+         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/game/answer`, {
+           method: 'POST',
+           headers: {
+             'Content-Type': 'application/json',
+             'Authorization': `Bearer ${$token}`
+           },
+           body: JSON.stringify({
+             questionId: currentQuestion.id,
+             selectedAnswer: selectedAnswer || 'No answer',
+             timeTaken
+           })
+         });
+         
+         if (response.ok) {
+           result = await response.json();
+         }
+       } catch (error) {
+         console.error('Failed to submit answer:', error);
+       }
+     }
+
+     function nextQuestion() {
+       loadQuestion();
+     }
+   </script>
+
+   <div class="game-container">
+     <h1>Street View Guessing Game</h1>
+     
+     {#if loading}
+       <div class="loading">Loading question...</div>
+     {:else if currentQuestion}
+       <div class="game-area">
+         <div class="timer-bar">
+           <div class="timer-progress" style="width: {(timeLeft / 30) * 100}%"></div>
+           <span class="timer-text">Time: {timeLeft}s</span>
+         </div>
+
+         <div class="street-view">
+           <img 
+             src={currentQuestion.image_url} 
+             alt="Street view of garage"
+             class="street-view-image"
+           />
+         </div>
+
+         <div class="question">
+           <h3>What size is this garage door?</h3>
+           
+           {#if gameActive}
+             <div class="options">
+               <button 
+                 class="option {selectedAnswer === currentQuestion.option_a ? 'selected' : ''}"
+                 on:click={() => selectedAnswer = currentQuestion.option_a}
+               >
+                 A. {currentQuestion.option_a}
+               </button>
+               <button 
+                 class="option {selectedAnswer === currentQuestion.option_b ? 'selected' : ''}"
+                 on:click={() => selectedAnswer = currentQuestion.option_b}
+               >
+                 B. {currentQuestion.option_b}
+               </button>
+               <button 
+                 class="option {selectedAnswer === currentQuestion.option_c ? 'selected' : ''}"
+                 on:click={() => selectedAnswer = currentQuestion.option_c}
+               >
+                 C. {currentQuestion.option_c}
+               </button>
+               <button 
+                 class="option {selectedAnswer === currentQuestion.option_d ? 'selected' : ''}"
+                 on:click={() => selectedAnswer = currentQuestion.option_d}
+               >
+                 D. {currentQuestion.option_d}
+               </button>
+             </div>
+             
+             <button 
+               class="submit-btn"
+               on:click={submitAnswer}
+               disabled={!selectedAnswer}
+             >
+               Submit Answer
+             </button>
+           {/if}
+
+           {#if result}
+             <div class="result">
+               <h3 class="{result.correct ? 'correct' : 'incorrect'}">
+                 {result.correct ? 'Correct!' : 'Incorrect'}
+               </h3>
+               <p>The correct answer was: {result.correctAnswer}</p>
+               <p>You earned {result.pointsAwarded} points!</p>
+               
+               <button class="next-btn" on:click={nextQuestion}>
+                 Next Question
+               </button>
+             </div>
+           {/if}
+         </div>
+       </div>
+     {:else}
+       <div class="no-questions">
+         No questions available. Check back later!
+       </div>
+     {/if}
+   </div>
+
+   <style>
+     .game-container {
+       max-width: 800px;
+       margin: 0 auto;
+     }
+
+     .timer-bar {
+       position: relative;
+       height: 30px;
+       background: #ecf0f1;
+       border-radius: 15px;
+       margin-bottom: 2rem;
+       overflow: hidden;
+     }
+
+     .timer-progress {
+       height: 100%;
+       background: linear-gradient(90deg, #e74c3c, #f39c12, #2ecc71);
+       transition: width 1s linear;
+     }
+
+     .timer-text {
+       position: absolute;
+       top: 50%;
+       left: 50%;
+       transform: translate(-50%, -50%);
+       font-weight: bold;
+       color: #2c3e50;
+     }
+
+     .street-view-image {
+       width: 100%;
+       max-height: 400px;
+       object-fit: cover;
+       border-radius: 8px;
+       margin-bottom: 2rem;
+     }
+
+     .options {
+       display: grid;
+       grid-template-columns: 1fr 1fr;
+       gap: 1rem;
+       margin-bottom: 2rem;
+     }
+
+     .option {
+       padding: 1rem;
+       border: 2px solid #ddd;
+       background: white;
+       border-radius: 8px;
+       cursor: pointer;
+       transition: all 0.2s;
+       text-align: left;
+     }
+
+     .option:hover {
+       border-color: #3498db;
+       background: #f8f9fa;
+     }
+
+     .option.selected {
+       border-color: #3498db;
+       background: #e3f2fd;
+     }
+
+     .submit-btn, .next-btn {
+       width: 100%;
+       padding: 1rem;
+       background: #3498db;
+       color: white;
+       border: none;
+       border-radius: 8px;
+       font-size: 1.1rem;
+       cursor: pointer;
+       transition: background 0.2s;
+     }
+
+     .submit-btn:hover:not(:disabled), .next-btn:hover {
+       background: #2980b9;
+     }
+
+     .submit-btn:disabled {
+       background: #bdc3c7;
+       cursor: not-allowed;
+     }
+
+     .result {
+       text-align: center;
+       padding: 2rem;
+       background: #f8f9fa;
+       border-radius: 8px;
+       margin-top: 2rem;
+     }
+
+     .correct { color: #27ae60; }
+     .incorrect { color: #e74c3c; }
+
+     .loading, .no-questions {
+       text-align: center;
+       padding: 4rem;
+       color: #7f8c8d;
+       font-size: 1.2rem;
+     }
+   </style>
+   ```
+
+## Phase 5: Integration & Testing
+
+### 5.1 Add Package.json Scripts
+1. Edit `backend/package.json`, add scripts:
+   ```json
+   {
+     "scripts": {
+       "start": "node server.js",
+       "dev": "nodemon server.js"
+     }
+   }
+   ```
+
+2. Edit `frontend/package.json`, add build script if missing:
+   ```json
+   {
+     "scripts": {
+       "dev": "vite dev",
+       "build": "vite build",
+       "preview": "vite preview"
+     }
+   }
+   ```
+
+### 5.2 Start Development Servers
+1. Open terminal in backend directory
+2. Run: `npm run dev`
+3. Open new terminal in frontend directory
+4. Run: `npm run dev`
+5. Open browser to `http://localhost:5173`
+
+### 5.3 Test Basic Functionality
+1. Register new user account
+2. Submit test job entry
+3. Verify points are awarded
+4. Test navigation between pages
+5. Check database for stored data
+
+## Phase 6: Google Street View Integration
+
+### 6.1 Add Street View Service
+1. Create file: `backend/services/streetView.js`
+2. Add Street View API integration:
+   ```javascript
+   const fetch = require('node-fetch');
+
+   async function getStreetViewImage(address) {
+     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+     const size = '640x640';
+     const fov = '90';
+     
+     const url = `https://maps.googleapis.com/maps/api/streetview?size=${size}&location=${encodeURIComponent(address)}&fov=${fov}&key=${apiKey}`;
+     
+     return url;
+   }
+
+   async function geocodeAddress(address) {
+     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
+     
+     const response = await fetch(url);
+     const data = await response.json();
+     
+     if (data.results && data.results.length > 0) {
+       const location = data.results[0].geometry.location;
+       return { lat: location.lat, lng: location.lng };
+     }
+     
+     return null;
+   }
+
+   module.exports = { getStreetViewImage, geocodeAddress };
+   ```
+
+### 6.2 Create Question Generation Script
+1. Create file: `backend/scripts/generateQuestions.js`
+2. Add question generation logic:
+   ```javascript
+   const sqlite3 = require('sqlite3').verbose();
+   const { getStreetViewImage } = require('../services/streetView');
+
+   const db = new sqlite3.Database(process.env.DATABASE_PATH);
+
+   async function generateQuestionsFromJobs() {
+     db.all('SELECT * FROM jobs WHERE address NOT IN (SELECT address FROM game_questions)', async (err, jobs) => {
+       if (err) {
+         console.error('Error fetching jobs:', err);
+         return;
+       }
+
+       for (const job of jobs) {
+         try {
+           const imageUrl = await getStreetViewImage(job.address);
+           const options = generateOptions(job.door_size);
+           
+           db.run(
+             `INSERT INTO game_questions (address, image_url, correct_answer, option_a, option_b, option_c, option_d)
+              VALUES (?, ?, ?, ?, ?, ?, ?)`,
+             [job.address, imageUrl, job.door_size, ...options],
+             (err) => {
+               if (err) {
+                 console.error('Error creating question:', err);
+               } else {
+                 console.log(`Created question for ${job.address}`);
+               }
+             }
+           );
+         } catch (error) {
+           console.error(`Error processing ${job.address}:`, error);
+         }
+       }
+     });
+   }
+
+   function generateOptions(correctAnswer) {
+     const allSizes = [
+       '8x7 feet',
+       '9x7 feet', 
+       '16x7 feet (double)',
+       '18x8 feet (double)',
+       'Custom size'
+     ];
+     
+     const options = [correctAnswer];
+     const remaining = allSizes.filter(size => size !== correctAnswer);
+     
+     // Add 3 random incorrect options
+     for (let i = 0; i < 3; i++) {
+       if (remaining.length > 0) {
+         const randomIndex = Math.floor(Math.random() * remaining.length);
+         options.push(remaining.splice(randomIndex, 1)[0]);
+       }
+     }
+     
+     // Shuffle options
+     return shuffleArray(options);
+   }
+
+   function shuffleArray(array) {
+     const shuffled = [...array];
+     for (let i = shuffled.length - 1; i > 0; i--) {
+       const j = Math.floor(Math.random() * (i + 1));
+       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+     }
+     return shuffled;
+   }
+
+   // Run every hour
+   setInterval(generateQuestionsFromJobs, 60 * 60 * 1000);
+
+   module.exports = { generateQuestionsFromJobs };
+   ```
+
+## Phase 7: Deployment Preparation
+
+### 7.1 Environment Variables Setup
+1. Create production environment files
+2. Add all required API keys
+3. Set database connection strings
+4. Configure CORS for production domains
+
+### 7.2 Build Scripts
+1. Add build commands for both frontend and backend
+2. Create deployment documentation
+3. Set up database migration scripts
+4. Test production build locally
+
+This plan provides a complete roadmap for implementing the Garage Door Data Collection Game using Svelte for the frontend and Express.js for the backend, with proper authentication, point tracking, and Google Street View integration.

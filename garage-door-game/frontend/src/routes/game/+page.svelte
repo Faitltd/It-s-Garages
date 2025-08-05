@@ -428,7 +428,7 @@
 						<div class="score-number">{scoreResult.score}</div>
 						<div class="text-white">COINS EARNED</div>
 						<div class="flex justify-center mt-2">
-							{#each Array(Math.min(scoreResult.score / 10, 10)) as _}
+							{#each Array.from({length: Math.min(Math.floor(scoreResult.score / 10), 10)}) as _}
 								<div class="coin"></div>
 							{/each}
 						</div>

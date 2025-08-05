@@ -327,8 +327,8 @@
                     Number of Doors
                   </label>
                   <select bind:value={garage_door_count} class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                    {#each Array(5) as _, i}
-                      <option value={i + 1}>{i + 1}</option>
+                    {#each [1, 2, 3, 4, 5] as count}
+                      <option value={count}>{count}</option>
                     {/each}
                   </select>
                 </div>
