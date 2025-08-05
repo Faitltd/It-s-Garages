@@ -6,7 +6,9 @@ import {
   startValidationGame,
   submitValidationGuess,
   getValidationStats,
-  getUserValidationHistory
+  getUserValidationHistory,
+  getNextValidationQuestion,
+  endValidationGameSession
 } from '../services/validationGameService';
 import Joi from 'joi';
 
@@ -216,5 +218,95 @@ async function getValidationLeaderboard(limit: number): Promise<any[]> {
     });
   });
 }
+
+/**
+ * Get next question in validation game
+ */
+router.post('/next-question',
+  authenticate,
+  auditDataAccess('validation_game', 'next_question'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      const userId = req.user!.userId;
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        res.status(400).json({
+          success: false,
+          error: {
+            message: 'Session ID is required',
+            code: 'MISSING_SESSION_ID'
+          }
+        });
+        return;
+      }
+
+      const session = await getNextValidationQuestion(sessionId, userId);
+
+      if (!session) {
+        res.status(404).json({
+          success: false,
+          error: {
+            message: 'No more questions available or invalid session',
+            code: 'NO_MORE_QUESTIONS'
+          }
+        });
+        return;
+      }
+
+      // Return session data without revealing correct answer
+      res.json({
+        success: true,
+        data: {
+          sessionId: session.sessionId,
+          address: session.address,
+          imageUrl: session.imageUrl,
+          timeLimit: session.timeLimit,
+          questionsAnswered: session.questionsAnswered,
+          totalScore: session.totalScore,
+          instructions: 'Look at the garage door in the image and estimate the measurements'
+        }
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * End validation game session
+ */
+router.post('/end-session',
+  authenticate,
+  auditDataAccess('validation_game', 'end_session'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      const userId = req.user!.userId;
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        res.status(400).json({
+          success: false,
+          error: {
+            message: 'Session ID is required',
+            code: 'MISSING_SESSION_ID'
+          }
+        });
+        return;
+      }
+
+      const ended = endValidationGameSession(sessionId, userId);
+
+      res.json({
+        success: ended,
+        message: ended ? 'Session ended successfully' : 'Session not found or already ended'
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 export default router;

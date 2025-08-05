@@ -11,10 +11,12 @@ export interface ValidationGameSession {
     garage_door_width: number;
     garage_door_height: number;
     garage_door_type: string;
-    door_size: string;
   };
   startTime: Date;
   timeLimit: number;
+  questionsAnswered: number;
+  totalScore: number;
+  currentQuestionStartTime: Date;
 }
 
 export interface GameGuess {
@@ -83,11 +85,13 @@ export const startValidationGame = async (userId: number): Promise<ValidationGam
         garage_door_count: dataEntry.garage_door_count,
         garage_door_width: dataEntry.garage_door_width,
         garage_door_height: dataEntry.garage_door_height,
-        garage_door_type: dataEntry.garage_door_type,
-        door_size: dataEntry.door_size
+        garage_door_type: dataEntry.garage_door_type
       },
       startTime: new Date(),
-      timeLimit: 60 // 60 seconds
+      timeLimit: 60, // 60 seconds
+      questionsAnswered: 0,
+      totalScore: 0,
+      currentQuestionStartTime: new Date()
     };
 
     // Store session
@@ -190,8 +194,12 @@ export const submitValidationGuess = async (
     // Update user stats
     await updateUserValidationStats(userId, pointsEarned, overallAccuracy);
 
-    // Clean up session
-    activeSessions.delete(sessionId);
+    // Update session for next question
+    session.questionsAnswered++;
+    session.totalScore += pointsEarned;
+
+    // Keep session active for next question (don't delete)
+    activeSessions.set(sessionId, session);
 
     return result;
   } catch (error) {
@@ -203,18 +211,21 @@ export const submitValidationGuess = async (
 /**
  * Get a random verified data entry for the game
  */
-const getRandomVerifiedEntry = async (): Promise<any> => {
+const getRandomVerifiedEntry = async (excludeId?: number): Promise<any> => {
   return new Promise((resolve, reject) => {
+    const whereClause = excludeId
+      ? `WHERE is_verified = 1 AND street_view_url IS NOT NULL AND street_view_url != '' AND id != ?`
+      : `WHERE is_verified = 1 AND street_view_url IS NOT NULL AND street_view_url != ''`;
+
     const stmt = db.prepare(`
-      SELECT * FROM garage_door_data_entries 
-      WHERE is_verified = 1 
-        AND street_view_url IS NOT NULL 
-        AND street_view_url != ''
-      ORDER BY RANDOM() 
+      SELECT * FROM garage_door_data_entries
+      ${whereClause}
+      ORDER BY RANDOM()
       LIMIT 1
     `);
 
-    stmt.get([], (err, row) => {
+    const params = excludeId ? [excludeId] : [];
+    stmt.get(params, (err, row) => {
       if (err) {
         reject(err);
         return;
@@ -224,6 +235,70 @@ const getRandomVerifiedEntry = async (): Promise<any> => {
 
     stmt.finalize();
   });
+};
+
+/**
+ * Get next question for an existing session
+ */
+export const getNextValidationQuestion = async (sessionId: string, userId: number): Promise<ValidationGameSession | null> => {
+  try {
+    const session = activeSessions.get(sessionId);
+    if (!session || session.userId !== userId) {
+      return null;
+    }
+
+    // Get a new random verified data entry (different from current one)
+    const dataEntry = await getRandomVerifiedEntry(session.dataEntryId);
+    if (!dataEntry) {
+      // No more questions available, end the session
+      activeSessions.delete(sessionId);
+      return null;
+    }
+
+    // Check if the stored Street View URL is valid, use fallback if not
+    let imageUrl = dataEntry.street_view_url || '';
+
+    if (imageUrl.includes('maps.googleapis.com/maps/api/streetview')) {
+      try {
+        const response = await fetch(imageUrl, { method: 'HEAD' });
+        if (!response.ok) {
+          imageUrl = 'https://via.placeholder.com/640x640/cccccc/666666?text=Street+View+Unavailable';
+        }
+      } catch (error) {
+        imageUrl = 'https://via.placeholder.com/640x640/cccccc/666666?text=Street+View+Unavailable';
+      }
+    }
+
+    // Update session with new question
+    session.dataEntryId = dataEntry.id;
+    session.address = dataEntry.address;
+    session.imageUrl = imageUrl;
+    session.correctAnswer = {
+      garage_door_count: dataEntry.garage_door_count,
+      garage_door_width: dataEntry.garage_door_width,
+      garage_door_height: dataEntry.garage_door_height,
+      garage_door_type: dataEntry.garage_door_type
+    };
+    session.currentQuestionStartTime = new Date();
+
+    activeSessions.set(sessionId, session);
+    return session;
+  } catch (error) {
+    console.error('Error getting next validation question:', error);
+    return null;
+  }
+};
+
+/**
+ * End a validation game session
+ */
+export const endValidationGameSession = (sessionId: string, userId: number): boolean => {
+  const session = activeSessions.get(sessionId);
+  if (session && session.userId === userId) {
+    activeSessions.delete(sessionId);
+    return true;
+  }
+  return false;
 };
 
 /**
