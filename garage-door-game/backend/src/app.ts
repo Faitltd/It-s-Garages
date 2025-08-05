@@ -16,6 +16,7 @@ import dataRoutes from './routes/data';
 import estimateRoutes from './routes/estimate';
 import dataEntryRoutes from './routes/dataEntry';
 import validationGameRoutes from './routes/validationGame';
+import testRoutes from './routes/test';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -113,6 +114,7 @@ export const createApp = () => {
   app.use('/api/estimate', estimateRoutes);
   app.use('/api/data-entry', dataEntryRoutes);
   app.use('/api/validation-game', validationGameRoutes);
+  app.use('/api/test', testRoutes);
 
   // API info endpoint
   app.get('/api', (req, res) => {

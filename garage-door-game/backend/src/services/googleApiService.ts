@@ -126,7 +126,11 @@ class GoogleApiService {
   }): string {
     const apiKey = this.getStreetViewApiKey();
 
-    // No fallback - API key is required and validated in constructor
+    // Temporary fallback for API key issues - return placeholder
+    if (!apiKey || apiKey === 'your-api-key-here') {
+      console.warn('Street View API key not configured, using placeholder');
+      return 'https://via.placeholder.com/640x640/cccccc/666666?text=Street+View+Unavailable';
+    }
 
     const baseUrl = 'https://maps.googleapis.com/maps/api/streetview';
 
