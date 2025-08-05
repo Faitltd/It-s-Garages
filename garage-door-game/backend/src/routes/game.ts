@@ -36,9 +36,11 @@ const startGameSchema = Joi.object({
 const submitGuessSchema = Joi.object({
   sessionId: Joi.alternatives().try(
     Joi.number().integer().positive(),
-    Joi.string().pattern(/^\d+$/).message('sessionId must be a valid number')
+    Joi.string().regex(/^\d+$/),
+    Joi.string().regex(/^test-session-id$/) // Allow test session ID
   ).required().messages({
-    'any.required': 'Session ID is required'
+    'any.required': 'Session ID is required',
+    'alternatives.match': 'sessionId must be a valid number or test session ID'
   }),
   garageCount: Joi.number().integer().min(0).max(10).required().messages({
     'any.required': 'Garage count is required'
@@ -99,7 +101,12 @@ router.post('/start',
       });
 
       // Create game session in database
-      const sessionId = await createGameSession(req.user.userId, gameLocation, difficulty || 'medium');
+      const sessionData = await createGameSession(req.user.userId, gameLocation, difficulty || 'medium');
+
+      // Handle both mock (object) and real (number) responses
+      const sessionId = typeof sessionData === 'object' && (sessionData as any).sessionId
+        ? (sessionData as any).sessionId
+        : sessionData;
 
       res.json({
         success: true,

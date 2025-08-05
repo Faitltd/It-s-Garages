@@ -67,29 +67,39 @@ jest.mock('../services/gameService', () => ({
     }
   })),
   getGameSession: jest.fn(() => ({
-    sessionId: 'test-session-id',
-    userId: 1,
-    imageUrl: 'https://mock-streetview-url.com/test.jpg',
+    id: 1,
+    user_id: 1,
+    job_id: 1,
+    guess_door_count: null, // null indicates session is not completed
+    guess_door_width: null,
+    guess_door_height: null,
+    guess_garage_type: null,
+    is_correct: false,
+    points_earned: 0,
+    time_taken: null,
+    created_at: new Date().toISOString(),
     difficulty: 'medium',
-    timeLimit: 30,
-    startTime: new Date(),
-    correctAnswer: {
-      garageCount: 2,
-      garageWidth: 8,
-      garageHeight: 7,
-      garageType: 'residential'
-    }
+    location_lat: 37.7749,
+    location_lng: -122.4194,
+    location_address: '123 Test Street, Test City, TC 12345'
   })),
   updateGameSession: jest.fn(),
   calculateScore: jest.fn(() => ({
-    score: 85,
-    accuracy: 90,
-    pointsEarned: 100,
+    points: 85,
+    accuracy: 0.9,
+    feedback: 'Great job! Your guess was very accurate.',
     correctAnswer: {
       garageCount: 2,
       garageWidth: 8,
       garageHeight: 7,
-      garageType: 'residential'
+      garageType: 'single'
+    },
+    breakdown: {
+      countAccuracy: 1.0,
+      sizeAccuracy: 0.9,
+      typeAccuracy: 0.8,
+      confidenceBonus: 0.1,
+      timeBonus: 0.05
     }
   })),
   getUserGameHistory: jest.fn(() => ({

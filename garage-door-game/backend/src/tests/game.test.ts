@@ -101,7 +101,7 @@ describe('Game API', () => {
         garageCount: 2,
         garageWidth: 8,
         garageHeight: 7,
-        garageType: 'residential',
+        garageType: 'single',
         confidence: 85
       };
 
@@ -114,8 +114,9 @@ describe('Game API', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveProperty('score');
       expect(response.body.data).toHaveProperty('accuracy');
-      expect(response.body.data).toHaveProperty('pointsEarned');
+      expect(response.body.data).toHaveProperty('feedback');
       expect(response.body.data).toHaveProperty('correctAnswer');
+      expect(response.body.data).toHaveProperty('breakdown');
     });
 
     test('should reject guess without authentication', async () => {
