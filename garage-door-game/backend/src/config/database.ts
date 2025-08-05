@@ -1,6 +1,7 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { initializeResidentialCache } from '../services/overpassFilter';
 
 const DATABASE_PATH = process.env.DATABASE_PATH || './database/garage_game.db';
 
@@ -502,6 +503,10 @@ export const initializeDatabase = (): Promise<void> => {
       db.run(`CREATE INDEX IF NOT EXISTS idx_validation_game_results_created_at ON validation_game_results(created_at)`);
 
       console.log('Database schema initialized successfully');
+
+      // Initialize residential cache table
+      initializeResidentialCache();
+
       resolve();
     });
 

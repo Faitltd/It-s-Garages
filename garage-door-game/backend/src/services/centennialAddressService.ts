@@ -1,5 +1,6 @@
 import { db } from '../config/database';
 import { GoogleApiService } from './googleApiService';
+import { isHouse } from './overpassFilter';
 
 export interface CentennialAddress {
   id: number;
@@ -24,21 +25,43 @@ export interface CentennialAddress {
  */
 export const getRandomCentennialAddress = (): Promise<CentennialAddress | null> => {
   return new Promise((resolve, reject) => {
-    const stmt = db.prepare(`
+    // First try to get a residential address
+    const residentialStmt = db.prepare(`
       SELECT * FROM centennial_addresses
       WHERE address IS NOT NULL
         AND address != ''
         AND (garage_not_visible IS NULL OR garage_not_visible = 0)
+        AND is_residential = 1
       ORDER BY RANDOM()
       LIMIT 1
     `);
 
-    stmt.get([], (err, row) => {
+    residentialStmt.get([], (err, row) => {
       if (err) {
-        console.error('Error getting random Centennial address:', err);
+        console.error('Error getting random residential Centennial address:', err);
         reject(err);
+      } else if (row) {
+        resolve(row as CentennialAddress);
       } else {
-        resolve(row as CentennialAddress || null);
+        // Fallback to any address if no residential ones are available
+        console.log('No residential addresses found, falling back to any address');
+        const fallbackStmt = db.prepare(`
+          SELECT * FROM centennial_addresses
+          WHERE address IS NOT NULL
+            AND address != ''
+            AND (garage_not_visible IS NULL OR garage_not_visible = 0)
+          ORDER BY RANDOM()
+          LIMIT 1
+        `);
+
+        fallbackStmt.get([], (fallbackErr, fallbackRow) => {
+          if (fallbackErr) {
+            console.error('Error getting fallback Centennial address:', fallbackErr);
+            reject(fallbackErr);
+          } else {
+            resolve(fallbackRow as CentennialAddress || null);
+          }
+        });
       }
     });
   });
@@ -49,22 +72,45 @@ export const getRandomCentennialAddress = (): Promise<CentennialAddress | null> 
  */
 export const getRandomCentennialAddressExcluding = (excludeId: number): Promise<CentennialAddress | null> => {
   return new Promise((resolve, reject) => {
-    const stmt = db.prepare(`
+    // First try to get a residential address
+    const residentialStmt = db.prepare(`
       SELECT * FROM centennial_addresses
       WHERE address IS NOT NULL
         AND address != ''
         AND id != ?
         AND (garage_not_visible IS NULL OR garage_not_visible = 0)
+        AND is_residential = 1
       ORDER BY RANDOM()
       LIMIT 1
     `);
 
-    stmt.get([excludeId], (err, row) => {
+    residentialStmt.get([excludeId], (err, row) => {
       if (err) {
-        console.error('Error getting random Centennial address:', err);
+        console.error('Error getting random residential Centennial address:', err);
         reject(err);
+      } else if (row) {
+        resolve(row as CentennialAddress);
       } else {
-        resolve(row as CentennialAddress || null);
+        // Fallback to any address if no residential ones are available
+        console.log('No residential addresses found, falling back to any address');
+        const fallbackStmt = db.prepare(`
+          SELECT * FROM centennial_addresses
+          WHERE address IS NOT NULL
+            AND address != ''
+            AND id != ?
+            AND (garage_not_visible IS NULL OR garage_not_visible = 0)
+          ORDER BY RANDOM()
+          LIMIT 1
+        `);
+
+        fallbackStmt.get([excludeId], (fallbackErr, fallbackRow) => {
+          if (fallbackErr) {
+            console.error('Error getting fallback Centennial address:', fallbackErr);
+            reject(fallbackErr);
+          } else {
+            resolve(fallbackRow as CentennialAddress || null);
+          }
+        });
       }
     });
   });
@@ -196,18 +242,46 @@ export const getCentennialAddressWithStreetView = async (addressId?: number): Pr
 } | null> => {
   try {
     let address: CentennialAddress | null;
-    
-    if (addressId) {
-      address = await getCentennialAddressById(addressId);
-    } else {
-      address = await getRandomCentennialAddress();
-    }
+    let attempts = 0;
+    const maxAttempts = 5; // Try up to 5 addresses to find a residential one
+
+    do {
+      if (addressId) {
+        address = await getCentennialAddressById(addressId);
+      } else {
+        address = await getRandomCentennialAddress();
+      }
+
+      if (!address) {
+        return null;
+      }
+
+      // Check if this location is residential using Overpass API
+      console.log(`Checking if address is residential: ${address.address} (${address.latitude}, ${address.longitude})`);
+      const residential = await isHouse(address.latitude, address.longitude);
+
+      if (residential) {
+        console.log(`✅ Address confirmed as residential: ${address.address}`);
+        break; // Found a residential address
+      } else {
+        console.log(`❌ Address not residential, trying another: ${address.address}`);
+        address = null; // Reset to try another address
+        attempts++;
+
+        // If we have a specific addressId, don't retry
+        if (addressId) {
+          console.log(`Specific address ${addressId} is not residential, returning null`);
+          return null;
+        }
+      }
+    } while (!address && attempts < maxAttempts);
 
     if (!address) {
+      console.log(`Could not find residential address after ${maxAttempts} attempts`);
       return null;
     }
 
-    // Generate Street View URL
+    // Generate Street View URL only for residential addresses
     const googleService = new GoogleApiService();
     const streetViewUrl = googleService.buildStreetViewUrl({
       lat: address.latitude,

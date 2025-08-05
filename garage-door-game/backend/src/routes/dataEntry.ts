@@ -11,6 +11,7 @@ import {
   getCentennialAddressWithStreetView,
   getCentennialAddressStats
 } from '../services/centennialAddressService';
+import { filterResidentialAddresses } from '../scripts/filterResidentialAddresses';
 
 const router = express.Router();
 
@@ -27,7 +28,6 @@ const dataEntrySchema = Joi.object({
   garage_door_width: Joi.number().positive().required(),
   garage_door_height: Joi.number().positive().required(),
   garage_door_type: Joi.string().valid('single', 'double', 'triple', 'commercial', 'custom').required(),
-  garage_door_material: Joi.string().valid('steel', 'wood', 'aluminum', 'composite', 'glass', 'other').optional(),
   notes: Joi.string().max(500).optional(),
   confidence_level: Joi.number().min(1).max(5).default(3) // 1-5 scale
 });
@@ -38,10 +38,51 @@ interface DataEntry {
   garage_door_width: number;
   garage_door_height: number;
   garage_door_type: string;
-  garage_door_material?: string;
   notes?: string;
   confidence_level: number;
 }
+
+/**
+ * Search addresses from Centennial addresses database
+ */
+router.get('/search-addresses',
+  authenticate,
+  auditDataAccess('data_entry', 'search_addresses'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      const query = req.query.q as string;
+
+      if (!query || query.length < 2) {
+        res.json({
+          success: true,
+          suggestions: []
+        });
+        return;
+      }
+
+      // Search Centennial addresses database
+      const addresses = await searchCentennialAddresses(query, 5);
+
+      // Transform to match frontend expectations
+      const suggestions = addresses.map(addr => ({
+        address: addr.address || addr.name,
+        description: `${addr.name !== addr.address ? addr.name + ' - ' : ''}Centennial, CO`
+      }));
+
+      res.json({
+        success: true,
+        suggestions: suggestions
+      });
+
+    } catch (error) {
+      console.error('Address search error:', error);
+      res.json({
+        success: true,
+        suggestions: [] // Return empty array on error to not break UI
+      });
+    }
+  }
+);
 
 /**
  * Reverse geocode coordinates to address
@@ -117,6 +158,49 @@ router.get('/centennial-address',
       }
     } catch (error) {
       console.error('Error getting Centennial address:', error);
+      next(error);
+    }
+  }
+);
+
+/**
+ * Get next Centennial address for validation game (POST method for session tracking)
+ */
+router.post('/centennial-address',
+  authenticate,
+  auditDataAccess('data_entry', 'get_centennial_address_game'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      const { sessionId } = req.body;
+      console.log('Getting next address for validation game session:', sessionId);
+
+      const addressData = await getCentennialAddressWithStreetView();
+
+      if (addressData) {
+        res.json({
+          success: true,
+          data: {
+            id: addressData.address.id,
+            address: addressData.address.address,
+            latitude: addressData.address.latitude,
+            longitude: addressData.address.longitude,
+            streetViewUrl: addressData.streetViewUrl,
+            hasKnownGarageDoor: addressData.address.has_garage_door,
+            knownGarageDoorCount: addressData.address.garage_door_count,
+            knownGarageDoorWidth: addressData.address.garage_door_width,
+            knownGarageDoorHeight: addressData.address.garage_door_height
+          }
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          error: {
+            message: 'No Centennial addresses available'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error getting Centennial address for validation game:', error);
       next(error);
     }
   }
@@ -388,9 +472,9 @@ async function saveDataEntry(data: any): Promise<number> {
     const stmt = db.prepare(`
       INSERT INTO garage_door_data_entries (
         user_id, address, garage_door_count, garage_door_width, garage_door_height,
-        garage_door_type, garage_door_material, door_size, notes, confidence_level,
+        garage_door_type, door_size, notes, confidence_level,
         street_view_url, latitude, longitude, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `);
 
     stmt.run([
@@ -400,7 +484,6 @@ async function saveDataEntry(data: any): Promise<number> {
       data.garage_door_width,
       data.garage_door_height,
       data.garage_door_type,
-      data.garage_door_material || null,
       data.doorSize,
       data.notes || null,
       data.confidence_level,
@@ -485,9 +568,9 @@ async function updateDataEntry(id: number, userId: number, data: DataEntry): Pro
     const doorSize = `${data.garage_door_width}x${data.garage_door_height} feet`;
     
     const stmt = db.prepare(`
-      UPDATE garage_door_data_entries 
+      UPDATE garage_door_data_entries
       SET garage_door_count = ?, garage_door_width = ?, garage_door_height = ?,
-          garage_door_type = ?, garage_door_material = ?, door_size = ?,
+          garage_door_type = ?, door_size = ?,
           notes = ?, confidence_level = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND user_id = ?
     `);
@@ -497,7 +580,6 @@ async function updateDataEntry(id: number, userId: number, data: DataEntry): Pro
       data.garage_door_width,
       data.garage_door_height,
       data.garage_door_type,
-      data.garage_door_material || null,
       doorSize,
       data.notes || null,
       data.confidence_level,
@@ -556,7 +638,6 @@ router.get('/export',
           de.garage_door_width,
           de.garage_door_height,
           de.garage_door_type,
-          de.garage_door_material,
           de.notes,
           de.confidence_level,
           de.created_at,
@@ -617,6 +698,47 @@ router.get('/export',
         success: false,
         error: {
           message: 'Failed to export data'
+        }
+      });
+    }
+  }
+);
+
+/**
+ * Filter addresses for residential properties using Overpass API
+ * This is an admin endpoint to batch process addresses
+ */
+router.post('/filter-residential',
+  authenticate,
+  auditDataAccess('data_entry', 'filter_residential'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      // Check if user has admin privileges (you might want to add role checking)
+      const userId = (req.user as any)?.id;
+
+      // Start the filtering process in the background
+      console.log(`Starting residential filtering process initiated by user ${userId}`);
+
+      // Run filtering asynchronously
+      filterResidentialAddresses()
+        .then(() => {
+          console.log('Residential filtering completed successfully');
+        })
+        .catch((error: any) => {
+          console.error('Residential filtering failed:', error);
+        });
+
+      res.json({
+        success: true,
+        message: 'Residential filtering process started. Check server logs for progress.'
+      });
+
+    } catch (error) {
+      console.error('Filter residential error:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to start residential filtering'
         }
       });
     }

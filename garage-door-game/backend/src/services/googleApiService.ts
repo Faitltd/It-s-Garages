@@ -239,6 +239,38 @@ class GoogleApiService {
     }
   }
 
+  /**
+   * Search for places/addresses using Google Places API
+   */
+  async searchPlaces(query: string): Promise<Array<{address: string, description?: string}> | null> {
+    try {
+      if (!this.checkUsageLimit('maps')) {
+        throw new Error('Google Maps API daily limit exceeded');
+      }
+
+      // Use Google Places Autocomplete API
+      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&types=address&key=${this.mapsApiKey}`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      this.incrementUsage('maps');
+
+      if ((data as any).status === 'OK' && (data as any).predictions) {
+        // Transform predictions into our format
+        return (data as any).predictions.slice(0, 5).map((prediction: any) => ({
+          address: prediction.description,
+          description: prediction.structured_formatting?.secondary_text || ''
+        }));
+      }
+
+      return [];
+    } catch (error) {
+      console.error('Google Places search error:', error);
+      return null;
+    }
+  }
+
 }
 
 // Create rate limiter for Google API endpoints

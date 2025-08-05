@@ -4,20 +4,19 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
-      '-t', 'gcr.io/$PROJECT_ID/garage-door-frontend:$COMMIT_SHA',
-      '--build-arg', 'VITE_API_BASE_URL=${_API_BASE_URL}',
-      '--build-arg', 'PUBLIC_API_BASE_URL=${_API_BASE_URL}',
+      '-t', 'gcr.io/$PROJECT_ID/garage-door-frontend',
+      '--build-arg', 'VITE_API_BASE_URL=https://garage-door-backend-341270520862.us-central1.run.app/api',
+      '--build-arg', 'PUBLIC_API_BASE_URL=https://garage-door-backend-341270520862.us-central1.run.app/api',
       '.'
     ]
 
   # Push the image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/garage-door-frontend:$COMMIT_SHA']
+    args: ['push', 'gcr.io/$PROJECT_ID/garage-door-frontend']
 
-# Substitutions for build arguments
-substitutions:
-  _API_BASE_URL: 'https://garage-door-backend-${PROJECT_NUMBER}.${_REGION}.run.app/api'
-  _REGION: 'us-central1'
+# Store the image in Container Registry
+images:
+  - 'gcr.io/$PROJECT_ID/garage-door-frontend'
 
 # Store the image in Container Registry
 images:

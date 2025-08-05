@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { authStore } from '$lib/stores/auth';
   import { get } from 'svelte/store';
+  import { getApiBase } from '$lib/config';
 
   let gameState = 'menu'; // 'menu', 'playing', 'question-result', 'final-results'
   let sessionId = '';
@@ -44,33 +45,34 @@
   ];
 
   async function startGame() {
+    console.log('startGame called');
     loading = true;
     message = '';
 
     try {
       const auth = get(authStore);
-      const response = await fetch('/api/validation-game/start', {
-        method: 'POST',
+      console.log('Starting game with auth:', auth);
+      const response = await fetch(`${getApiBase()}/data-entry/centennial-address`, {
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${auth.token}`
         }
       });
 
       const data = await response.json();
 
-      if (data.success) {
-        sessionId = data.data.sessionId;
+      if (data.success && data.data) {
+        sessionId = `game_${Date.now()}`; // Generate a simple session ID
         address = data.data.address;
-        imageUrl = data.data.imageUrl;
+        imageUrl = data.data.streetViewUrl;
         imageError = false; // Reset error state
-        timeLimit = data.data.timeLimit;
+        timeLimit = 60; // Default time limit
         timeLeft = timeLimit;
 
         gameState = 'playing';
         startTimer();
       } else {
-        message = data.error?.message || 'Failed to start game';
+        message = data.error?.message || 'Failed to load address';
       }
     } catch (error) {
       console.error('Start game error:', error);
@@ -91,29 +93,25 @@
   }
 
   async function submitGuess(skip = false, notVisible = false) {
+    console.log('submitGuess called:', { skip, notVisible, sessionId });
     if (timer) clearInterval(timer);
     loading = true;
 
     try {
       const auth = get(authStore);
+      console.log('Auth state:', auth);
+      // Create payload for data-entry submit endpoint
       const payload = {
-        sessionId,
-        skipped: skip,
-        notVisible: notVisible
+        address: address,
+        garage_door_count: skip || notVisible ? 0 : garage_door_count,
+        garage_door_width: skip || notVisible ? 0 : garage_door_width,
+        garage_door_height: skip || notVisible ? 0 : garage_door_height,
+        garage_door_type: skip || notVisible ? 'single' : garage_door_type,
+        confidence_level: skip || notVisible ? 1 : confidence,
+        notes: skip ? 'Skipped in validation game' : (notVisible ? 'No door visible in validation game' : 'Validation game submission')
       };
 
-      // Only include guess data if not skipping or marking as not visible
-      if (!skip && !notVisible) {
-        Object.assign(payload, {
-          garage_door_count,
-          garage_door_width,
-          garage_door_height,
-          garage_door_type,
-          confidence
-        });
-      }
-
-      const response = await fetch('/api/validation-game/guess', {
+      const response = await fetch(`${getApiBase()}/data-entry/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -125,7 +123,19 @@
       const data = await response.json();
 
       if (data.success) {
-        gameResult = data.data;
+        // Calculate a simple score for the game
+        let points = 0;
+        if (!skip && !notVisible) {
+          points = confidence * 10; // Base points on confidence
+        }
+        totalScore += points;
+        questionsAnswered++;
+
+        gameResult = {
+          points: points,
+          correct: true, // For now, assume all submissions are valid
+          feedback: skip ? 'Question skipped' : (notVisible ? 'No door visible' : 'Submission recorded')
+        };
         gameState = 'question-result';
       } else {
         message = data.error?.message || 'Failed to submit guess';
@@ -144,7 +154,7 @@
 
     try {
       const auth = get(authStore);
-      const response = await fetch('/api/validation-game/next-question', {
+      const response = await fetch(`${getApiBase()}/data-entry/centennial-address`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -155,15 +165,13 @@
 
       const data = await response.json();
 
-      if (data.success) {
+      if (data.success && data.data) {
         // Update with new question data
         address = data.data.address;
-        imageUrl = data.data.imageUrl;
+        imageUrl = data.data.streetViewUrl;
         imageError = false;
-        timeLimit = data.data.timeLimit;
+        timeLimit = 60;
         timeLeft = timeLimit;
-        questionsAnswered = data.data.questionsAnswered;
-        totalScore = data.data.totalScore;
 
         // Reset form
         garage_door_count = 1;
@@ -189,14 +197,8 @@
   async function endSession() {
     try {
       const auth = get(authStore);
-      await fetch('/api/validation-game/end-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${auth.token}`
-        },
-        body: JSON.stringify({ sessionId })
-      });
+      // No need to call backend for session end since we're using data-entry endpoints
+      console.log('Game session ended');
     } catch (error) {
       console.error('End session error:', error);
     }
@@ -323,7 +325,7 @@
             <div>
               <h3 class="text-sm font-bold text-gray-300 mb-3">YOUR GUESS:</h3>
 
-              <form on:submit|preventDefault={submitGuess} class="space-y-3">
+              <form on:submit|preventDefault={() => submitGuess()} class="space-y-3">
                 <!-- Door Count -->
                 <div>
                   <label class="block text-xs font-bold text-gray-400 mb-1">

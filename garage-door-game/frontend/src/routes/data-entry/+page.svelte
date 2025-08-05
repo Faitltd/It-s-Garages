@@ -3,13 +3,13 @@
   import { goto } from '$app/navigation';
   import { authStore } from '$lib/stores/auth';
   import { get } from 'svelte/store';
+  import { getApiBase } from '$lib/config';
 
   let address = '';
   let garage_door_count = 1;
   let garage_door_width = 8;
   let garage_door_height = 7;
   let garage_door_type = 'single';
-  let garage_door_material = 'steel';
   let notes = '';
   let confidence_level = 3;
   let loading = false;
@@ -18,6 +18,9 @@
   let gettingLocation = false;
   let locationSupported = 'geolocation' in navigator;
   let gettingCentennialAddress = false;
+  let addressSuggestions = [];
+  let showSuggestions = false;
+  let searchTimeout;
 
   // Check authentication
   onMount(() => {
@@ -51,7 +54,7 @@
 
       // Reverse geocode using Google Maps API
       const auth = get(authStore);
-      const response = await fetch('/api/data-entry/reverse-geocode', {
+      const response = await fetch(`${getApiBase()}/data-entry/reverse-geocode`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -97,7 +100,7 @@
 
     try {
       const auth = get(authStore);
-      const response = await fetch('/api/data-entry/centennial-address', {
+      const response = await fetch(`${getApiBase()}/data-entry/centennial-address`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${auth.token}`
@@ -139,6 +142,86 @@
     }
   }
 
+  // Local Centennial addresses (sample from CSV)
+  const centennialAddresses = [
+    "8342 E Briarwood Blvd, Centennial, CO",
+    "8333 E Davies Ave, Centennial, CO",
+    "6701 S Willow St, Centennial, CO",
+    "6754 S Willow St, Centennial, CO",
+    "8016 E Fremont Ave, Centennial, CO",
+    "8898 E Easter Ave, Centennial, CO",
+    "8799 E Easter Pl, Centennial, CO",
+    "8710 E Easter Pl, Centennial, CO",
+    "8691 E Briarwood Blvd, Centennial, CO",
+    "8634 E Easter Pl, Centennial, CO",
+    "8544 E Briarwood Pl, Centennial, CO",
+    "7066 S Verbena Cir, Centennial, CO",
+    "7267 S Verbena Way, Centennial, CO",
+    "8386 E Fremont Ct, Centennial, CO",
+    "7205 S Valentia Way, Centennial, CO",
+    "8308 E Costilla Ave, Centennial, CO",
+    "8242 E Briarwood Pl, Centennial, CO",
+    "8200 E Briarwood Blvd, Centennial, CO",
+    "8150 E Davies Ave, Centennial, CO",
+    "7100 S Willow St, Centennial, CO",
+    "8500 E Easter Ave, Centennial, CO",
+    "8400 E Fremont Ave, Centennial, CO",
+    "7300 S Verbena Way, Centennial, CO",
+    "8600 E Briarwood Blvd, Centennial, CO",
+    "7200 S Valentia Way, Centennial, CO"
+  ];
+
+  // Address autocomplete search (local)
+  function searchAddresses(query) {
+    if (!query || query.length < 2) {
+      addressSuggestions = [];
+      showSuggestions = false;
+      return;
+    }
+
+    const lowerQuery = query.toLowerCase();
+    const matches = centennialAddresses
+      .filter(addr => addr.toLowerCase().includes(lowerQuery))
+      .slice(0, 5)
+      .map(addr => ({
+        address: addr,
+        description: "Centennial, Colorado"
+      }));
+
+    addressSuggestions = matches;
+    showSuggestions = matches.length > 0;
+  }
+
+  // Handle address input changes
+  function onAddressInput(event) {
+    const query = event.target.value;
+    address = query;
+
+    // Clear previous timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+
+    // Debounce search
+    searchTimeout = setTimeout(() => {
+      searchAddresses(query);
+    }, 300);
+  }
+
+  // Select address from suggestions
+  function selectAddress(suggestion) {
+    address = suggestion.address;
+    addressSuggestions = [];
+    showSuggestions = false;
+  }
+
+  // Hide suggestions when clicking outside
+  function hideSuggestions() {
+    setTimeout(() => {
+      showSuggestions = false;
+    }, 200);
+  }
+
   const doorTypes = [
     { value: 'single', label: 'Single Door' },
     { value: 'double', label: 'Double Door' },
@@ -147,13 +230,35 @@
     { value: 'custom', label: 'Custom' }
   ];
 
-  const materials = [
-    { value: 'steel', label: 'Steel' },
-    { value: 'wood', label: 'Wood' },
-    { value: 'aluminum', label: 'Aluminum' },
-    { value: 'composite', label: 'Composite' },
-    { value: 'glass', label: 'Glass' },
-    { value: 'other', label: 'Other' }
+  const doorWidths = [
+    { value: 6, label: '6 feet' },
+    { value: 6.5, label: '6.5 feet' },
+    { value: 7, label: '7 feet' },
+    { value: 7.5, label: '7.5 feet' },
+    { value: 8, label: '8 feet' },
+    { value: 8.5, label: '8.5 feet' },
+    { value: 9, label: '9 feet' },
+    { value: 9.5, label: '9.5 feet' },
+    { value: 10, label: '10 feet' },
+    { value: 12, label: '12 feet' },
+    { value: 14, label: '14 feet' },
+    { value: 16, label: '16 feet' },
+    { value: 18, label: '18 feet' },
+    { value: 20, label: '20 feet' }
+  ];
+
+  const doorHeights = [
+    { value: 6, label: '6 feet' },
+    { value: 6.5, label: '6.5 feet' },
+    { value: 7, label: '7 feet' },
+    { value: 7.5, label: '7.5 feet' },
+    { value: 8, label: '8 feet' },
+    { value: 8.5, label: '8.5 feet' },
+    { value: 9, label: '9 feet' },
+    { value: 9.5, label: '9.5 feet' },
+    { value: 10, label: '10 feet' },
+    { value: 11, label: '11 feet' },
+    { value: 12, label: '12 feet' }
   ];
 
   async function submitData() {
@@ -167,7 +272,7 @@
 
     try {
       const auth = get(authStore);
-      const response = await fetch('/api/data-entry/submit', {
+      const response = await fetch(`${getApiBase()}/data-entry/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -179,7 +284,6 @@
           garage_door_width,
           garage_door_height,
           garage_door_type,
-          garage_door_material,
           notes: notes.trim() || undefined,
           confidence_level
         })
@@ -195,7 +299,6 @@
         garage_door_width = 8;
         garage_door_height = 7;
         garage_door_type = 'single';
-        garage_door_material = 'steel';
         notes = '';
         confidence_level = 3;
       } else {
@@ -239,19 +342,42 @@
 
       <form on:submit|preventDefault={submitData} class="space-y-6">
         <!-- Address -->
-        <div>
+        <div class="relative">
           <label for="address" class="block text-sm font-medium text-gray-700 mb-2">
             Address *
           </label>
           <div class="flex gap-2">
-            <input
-              type="text"
-              id="address"
-              bind:value={address}
-              placeholder="123 Main St, City, State"
-              required
-              class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <div class="flex-1 relative">
+              <input
+                type="text"
+                id="address"
+                bind:value={address}
+                on:input={onAddressInput}
+                on:blur={hideSuggestions}
+                placeholder="Start typing address..."
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                autocomplete="off"
+              />
+
+              <!-- Address Suggestions Dropdown -->
+              {#if showSuggestions && addressSuggestions.length > 0}
+                <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {#each addressSuggestions as suggestion}
+                    <button
+                      type="button"
+                      class="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none border-b border-gray-100 last:border-b-0"
+                      on:click={() => selectAddress(suggestion)}
+                    >
+                      <div class="text-sm font-medium text-gray-900">{suggestion.address}</div>
+                      {#if suggestion.description}
+                        <div class="text-xs text-gray-500">{suggestion.description}</div>
+                      {/if}
+                    </button>
+                  {/each}
+                </div>
+              {/if}
+            </div>
             <button
               type="button"
               on:click={getCentennialAddress}
@@ -324,33 +450,33 @@
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label for="door_width" class="block text-sm font-medium text-gray-700 mb-2">
-              Door Width (feet) *
+              Door Width *
             </label>
-            <input
-              type="number"
+            <select
               id="door_width"
               bind:value={garage_door_width}
-              min="4"
-              max="20"
-              step="0.5"
               required
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            >
+              {#each doorWidths as width}
+                <option value={width.value}>{width.label}</option>
+              {/each}
+            </select>
           </div>
           <div>
             <label for="door_height" class="block text-sm font-medium text-gray-700 mb-2">
-              Door Height (feet) *
+              Door Height *
             </label>
-            <input
-              type="number"
+            <select
               id="door_height"
               bind:value={garage_door_height}
-              min="6"
-              max="12"
-              step="0.5"
               required
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            >
+              {#each doorHeights as height}
+                <option value={height.value}>{height.label}</option>
+              {/each}
+            </select>
           </div>
         </div>
 
@@ -366,22 +492,6 @@
           >
             {#each doorTypes as type}
               <option value={type.value}>{type.label}</option>
-            {/each}
-          </select>
-        </div>
-
-        <!-- Door Material -->
-        <div>
-          <label for="door_material" class="block text-sm font-medium text-gray-700 mb-2">
-            Door Material
-          </label>
-          <select
-            id="door_material"
-            bind:value={garage_door_material}
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {#each materials as material}
-              <option value={material.value}>{material.label}</option>
             {/each}
           </select>
         </div>

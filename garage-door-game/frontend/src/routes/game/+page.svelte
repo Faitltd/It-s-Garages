@@ -148,6 +148,12 @@
 				gameSession = data.data;
 				gameStarted = true;
 				timeRemaining = gameSession!.timeLimit;
+
+				// Scroll to top when new game starts
+				if (typeof window !== 'undefined') {
+					window.scrollTo({ top: 0, behavior: 'smooth' });
+				}
+
 				startTimer();
 			} else {
 				const errorData = await response.json();
@@ -201,7 +207,14 @@
 			if (response.ok) {
 				const data = await response.json();
 				scoreResult = data.data;
+
+				// Show brief success message, then start next game
 				gameCompleted = true;
+
+				// Auto-start next game after 1.5 seconds
+				setTimeout(() => {
+					playAgain();
+				}, 1500);
 			} else {
 				const errorData = await response.json();
 				error = errorData.error?.message || 'Failed to submit guess';
@@ -228,6 +241,11 @@
 		confidence = 50;
 		selectedSize = '';
 		selectedType = '';
+
+		// Scroll to top of page for new question
+		if (typeof window !== 'undefined') {
+			window.scrollTo({ top: 0, behavior: 'smooth' });
+		}
 
 		// Start a new game immediately
 		startGame('medium');
@@ -424,77 +442,36 @@
 		<!-- Game Interface (always visible when user is logged in) -->
 		{#if !showLogin && user}
 			{#if gameCompleted && scoreResult}
-			<!-- Results Screen -->
+			<!-- Brief Success Message -->
 			<div class="text-center">
 				<div class="text-box power-up">
 					{#if scoreResult.score === 0}
 						<h1 class="text-2xl mb-4">⏭️ QUESTION SKIPPED ⏭️</h1>
+						<div class="flex justify-center items-center space-x-2 mt-4">
+							<div class="coin"></div>
+							<div class="coin"></div>
+							<div class="coin"></div>
+						</div>
+						<p class="text-white mt-2">Loading next question...</p>
 					{:else}
 						<h1 class="text-2xl mb-4">📊 DATA COLLECTED! 📊</h1>
-					{/if}
-				</div>
-
-				{#if scoreResult.score > 0}
-					<div class="score-display">
-						<div class="mb-4">
+						<div class="score-display mb-4">
 							<div class="score-number">{scoreResult.score}</div>
 							<div class="text-white">COINS EARNED</div>
 							<div class="flex justify-center mt-2">
-								{#each Array.from({length: Math.min(Math.floor(scoreResult.score / 10), 10)}) as _}
+								{#each Array.from({length: Math.min(Math.floor(scoreResult.score / 10), 5)}) as _}
 									<div class="coin"></div>
 								{/each}
 							</div>
 						</div>
-
-						<div class="mb-4">
-							<p class="text-white mt-2">{scoreResult.feedback}</p>
+						<div class="flex justify-center items-center space-x-2 mt-4">
+							<div class="coin"></div>
+							<div class="coin"></div>
+							<div class="coin"></div>
 						</div>
-					</div>
-
-					<div class="text-box">
-						<div class="bg-green-800 p-4 border-2 border-white mb-6">
-							<div class="text-yellow-300 font-bold mb-2">YOUR CONTRIBUTION</div>
-							<div class="text-white">🚪 Count: {garageCount}</div>
-							<div class="text-white">🏠 Type: {garageType}</div>
-							{#if garageWidth && garageHeight}
-								<div class="text-white">📏 Size: {garageWidth}' × {garageHeight}'</div>
-							{/if}
-							<div class="text-white">🎯 Confidence: {confidence}%</div>
-						</div>
-
-						<div class="space-y-4">
-							<button
-								on:click={playAgain}
-								class="w-full btn-retro btn-success"
-							>
-								🎮 PLAY AGAIN
-							</button>
-
-							<a href="/leaderboard" class="block w-full btn-retro btn-outline text-center">
-								🏆 HIGH SCORES
-							</a>
-						</div>
-					</div>
-				{:else}
-					<div class="text-box">
-						<div class="mb-6">
-							<p class="text-white">{scoreResult.feedback}</p>
-						</div>
-
-						<div class="space-y-4">
-							<button
-								on:click={playAgain}
-								class="w-full btn-retro btn-success"
-							>
-								🎮 PLAY AGAIN
-							</button>
-
-							<a href="/leaderboard" class="block w-full btn-retro btn-outline text-center">
-								🏆 HIGH SCORES
-							</a>
-						</div>
-					</div>
-				{/if}
+						<p class="text-white mt-2">Loading next question...</p>
+					{/if}
+				</div>
 			</div>
 		{:else if gameSession}
 			<!-- Game Play Screen -->
@@ -598,7 +575,40 @@
 							</div>
 						</div>
 
-
+						<!-- Action Buttons -->
+						<div class="text-box text-center space-y-2">
+							<button
+								type="button"
+								on:click={() => submitGuess(true)}
+								disabled={loading}
+								class="btn-retro btn-outline w-full text-xs"
+							>
+								{loading ? '⏳ SKIPPING...' : '⏭️ SKIP QUESTION'}
+							</button>
+							<button
+								type="button"
+								on:click={() => submitGuess(false, true)}
+								disabled={loading}
+								class="btn-retro btn-warning w-full text-xs"
+							>
+								{loading ? '⏳ MARKING...' : '🚫 NO DOOR VISIBLE'}
+							</button>
+							<button
+								type="button"
+								on:click={() => submitGuess()}
+								disabled={loading || timeRemaining <= 0 || !garageCount || !selectedType || !selectedSize}
+								class="btn-retro btn-primary w-full"
+							>
+								{#if loading}
+									<div class="flex items-center justify-center">
+										<div class="coin mr-2"></div>
+										SUBMITTING...
+									</div>
+								{:else}
+									🎯 SUBMIT ANSWER
+								{/if}
+							</button>
+						</div>
 
 						{#if error}
 							<div class="text-box bg-red-600 text-white text-center">
