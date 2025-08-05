@@ -1,9 +1,10 @@
 import { db } from '../config/database';
+import { getRandomCentennialAddress, getRandomCentennialAddressExcluding, getCentennialAddressWithStreetView } from './centennialAddressService';
 
 export interface ValidationGameSession {
   sessionId: string;
   userId: number;
-  dataEntryId: number;
+  centennialAddressId: number;
   address: string;
   imageUrl: string;
   correctAnswer: {
@@ -50,42 +51,30 @@ const activeSessions = new Map<string, ValidationGameSession>();
  */
 export const startValidationGame = async (userId: number): Promise<ValidationGameSession | null> => {
   try {
-    // Get a random verified data entry
-    const dataEntry = await getRandomVerifiedEntry();
-    if (!dataEntry) {
+    // Get a random Centennial address with Street View
+    const addressData = await getCentennialAddressWithStreetView();
+    if (!addressData) {
       return null;
     }
 
+    const { address, streetViewUrl } = addressData;
+
     // Create session
     const sessionId = require('crypto').randomUUID();
-    // Check if the stored Street View URL is valid, use fallback if not
-    let imageUrl = dataEntry.street_view_url || '';
 
-    // If the URL contains Google Street View API, test if it works
-    if (imageUrl.includes('maps.googleapis.com/maps/api/streetview')) {
-      try {
-        const response = await fetch(imageUrl, { method: 'HEAD' });
-        if (!response.ok) {
-          // Use placeholder if Google API returns error
-          imageUrl = 'https://via.placeholder.com/640x640/cccccc/666666?text=Street+View+Unavailable';
-        }
-      } catch (error) {
-        // Use placeholder if fetch fails
-        imageUrl = 'https://via.placeholder.com/640x640/cccccc/666666?text=Street+View+Unavailable';
-      }
-    }
-
+    // For addresses without known garage door data, we'll use default values
+    // The user will provide the actual measurements
     const session: ValidationGameSession = {
       sessionId,
       userId,
-      dataEntryId: dataEntry.id,
-      address: dataEntry.address,
-      imageUrl,
+      centennialAddressId: address.id,
+      address: address.address,
+      imageUrl: streetViewUrl,
       correctAnswer: {
-        garage_door_count: dataEntry.garage_door_count,
-        garage_door_width: dataEntry.garage_door_width,
-        garage_door_height: dataEntry.garage_door_height,
-        garage_door_type: dataEntry.garage_door_type
+        garage_door_count: address.garage_door_count || 1,
+        garage_door_width: address.garage_door_width || 8,
+        garage_door_height: address.garage_door_height || 7,
+        garage_door_type: 'single' // Default type
       },
       startTime: new Date(),
       timeLimit: 60, // 60 seconds
@@ -247,37 +236,25 @@ export const getNextValidationQuestion = async (sessionId: string, userId: numbe
       return null;
     }
 
-    // Get a new random verified data entry (different from current one)
-    const dataEntry = await getRandomVerifiedEntry(session.dataEntryId);
-    if (!dataEntry) {
+    // Get a new random Centennial address (different from current one)
+    const addressData = await getCentennialAddressWithStreetView();
+    if (!addressData) {
       // No more questions available, end the session
       activeSessions.delete(sessionId);
       return null;
     }
 
-    // Check if the stored Street View URL is valid, use fallback if not
-    let imageUrl = dataEntry.street_view_url || '';
-
-    if (imageUrl.includes('maps.googleapis.com/maps/api/streetview')) {
-      try {
-        const response = await fetch(imageUrl, { method: 'HEAD' });
-        if (!response.ok) {
-          imageUrl = 'https://via.placeholder.com/640x640/cccccc/666666?text=Street+View+Unavailable';
-        }
-      } catch (error) {
-        imageUrl = 'https://via.placeholder.com/640x640/cccccc/666666?text=Street+View+Unavailable';
-      }
-    }
+    const { address, streetViewUrl } = addressData;
 
     // Update session with new question
-    session.dataEntryId = dataEntry.id;
-    session.address = dataEntry.address;
-    session.imageUrl = imageUrl;
+    session.centennialAddressId = address.id;
+    session.address = address.address;
+    session.imageUrl = streetViewUrl;
     session.correctAnswer = {
-      garage_door_count: dataEntry.garage_door_count,
-      garage_door_width: dataEntry.garage_door_width,
-      garage_door_height: dataEntry.garage_door_height,
-      garage_door_type: dataEntry.garage_door_type
+      garage_door_count: address.garage_door_count || 1,
+      garage_door_width: address.garage_door_width || 8,
+      garage_door_height: address.garage_door_height || 7,
+      garage_door_type: 'single' // Default type
     };
     session.currentQuestionStartTime = new Date();
 
@@ -323,7 +300,7 @@ const saveValidationGameResult = async (
 
     stmt.run([
       session.userId,
-      session.dataEntryId,
+      session.centennialAddressId,
       session.sessionId,
       guess.garage_door_count || 0,
       guess.garage_door_width || 0,

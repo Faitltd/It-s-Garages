@@ -5,6 +5,12 @@ import { auditDataAccess } from '../middleware/auditMiddleware';
 import { googleApiService } from '../services/googleApiService';
 import { db } from '../config/database';
 import Joi from 'joi';
+import {
+  getRandomCentennialAddress,
+  searchCentennialAddresses,
+  getCentennialAddressWithStreetView,
+  getCentennialAddressStats
+} from '../services/centennialAddressService';
 
 const router = express.Router();
 
@@ -72,6 +78,108 @@ router.post('/reverse-geocode',
           message: 'Failed to reverse geocode coordinates'
         }
       });
+    }
+  }
+);
+
+/**
+ * Get a random Centennial address for data entry
+ */
+router.get('/centennial-address',
+  authenticate,
+  auditDataAccess('data_entry', 'get_centennial_address'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      const addressData = await getCentennialAddressWithStreetView();
+
+      if (addressData) {
+        res.json({
+          success: true,
+          data: {
+            id: addressData.address.id,
+            address: addressData.address.address,
+            latitude: addressData.address.latitude,
+            longitude: addressData.address.longitude,
+            streetViewUrl: addressData.streetViewUrl,
+            hasKnownGarageDoor: addressData.address.has_garage_door,
+            knownGarageDoorCount: addressData.address.garage_door_count,
+            knownGarageDoorWidth: addressData.address.garage_door_width,
+            knownGarageDoorHeight: addressData.address.garage_door_height
+          }
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          error: {
+            message: 'No Centennial addresses available'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error getting Centennial address:', error);
+      next(error);
+    }
+  }
+);
+
+/**
+ * Search Centennial addresses
+ */
+router.get('/centennial-addresses/search',
+  authenticate,
+  auditDataAccess('data_entry', 'search_centennial_addresses'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      const searchTerm = req.query.q as string;
+      const limit = parseInt(req.query.limit as string) || 10;
+
+      if (!searchTerm || searchTerm.length < 3) {
+        res.status(400).json({
+          success: false,
+          error: {
+            message: 'Search term must be at least 3 characters'
+          }
+        });
+        return;
+      }
+
+      const addresses = await searchCentennialAddresses(searchTerm, limit);
+
+      res.json({
+        success: true,
+        data: addresses.map(addr => ({
+          id: addr.id,
+          address: addr.address,
+          latitude: addr.latitude,
+          longitude: addr.longitude,
+          hasKnownGarageDoor: addr.has_garage_door,
+          knownGarageDoorCount: addr.garage_door_count
+        }))
+      });
+    } catch (error) {
+      console.error('Error searching Centennial addresses:', error);
+      next(error);
+    }
+  }
+);
+
+/**
+ * Get Centennial address statistics
+ */
+router.get('/centennial-addresses/stats',
+  authenticate,
+  auditDataAccess('data_entry', 'centennial_stats'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      const stats = await getCentennialAddressStats();
+
+      res.json({
+        success: true,
+        data: stats
+      });
+    } catch (error) {
+      console.error('Error getting Centennial address stats:', error);
+      next(error);
     }
   }
 );

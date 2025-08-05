@@ -17,6 +17,7 @@
   let messageType = '';
   let gettingLocation = false;
   let locationSupported = 'geolocation' in navigator;
+  let gettingCentennialAddress = false;
 
   // Check authentication
   onMount(() => {
@@ -86,6 +87,55 @@
       messageType = 'error';
     } finally {
       gettingLocation = false;
+    }
+  }
+
+  // Get a random Centennial address for data entry
+  async function getCentennialAddress() {
+    gettingCentennialAddress = true;
+    message = '';
+
+    try {
+      const auth = get(authStore);
+      const response = await fetch('/api/data-entry/centennial-address', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          address = data.data.address;
+          message = 'Centennial address loaded! Please verify the garage door details.';
+          messageType = 'success';
+
+          // If the address has known garage door data, pre-fill some fields
+          if (data.data.hasKnownGarageDoor) {
+            if (data.data.knownGarageDoorCount) {
+              garage_door_count = data.data.knownGarageDoorCount;
+            }
+            if (data.data.knownGarageDoorWidth) {
+              garage_door_width = data.data.knownGarageDoorWidth;
+            }
+            if (data.data.knownGarageDoorHeight) {
+              garage_door_height = data.data.knownGarageDoorHeight;
+            }
+          }
+        } else {
+          message = 'No Centennial addresses available';
+          messageType = 'error';
+        }
+      } else {
+        throw new Error('Failed to get Centennial address');
+      }
+    } catch (error) {
+      console.error('Centennial address error:', error);
+      message = 'Failed to get Centennial address. Please try again.';
+      messageType = 'error';
+    } finally {
+      gettingCentennialAddress = false;
     }
   }
 
@@ -203,6 +253,26 @@
               required
               class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+            <button
+              type="button"
+              on:click={getCentennialAddress}
+              disabled={gettingCentennialAddress}
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Get a random Centennial address"
+            >
+              {#if gettingCentennialAddress}
+                <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Loading...
+              {:else}
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+                Centennial Address
+              {/if}
+            </button>
             {#if locationSupported}
               <button
                 type="button"
@@ -228,11 +298,9 @@
             {/if}
           </div>
           <p class="text-sm text-gray-500 mt-1">
-            Enter the full address including city and state
+            Enter the full address including city and state, use "Centennial Address" for a random Centennial location
             {#if locationSupported}
-              or click "Use Location" to auto-fill your current address
-            {:else}
-              (Geolocation not supported by this browser)
+              , or click "Use Location" to auto-fill your current address
             {/if}
           </p>
         </div>
