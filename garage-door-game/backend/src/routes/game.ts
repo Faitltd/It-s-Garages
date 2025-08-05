@@ -97,8 +97,8 @@ router.post('/start',
       res.json({
         success: true,
         data: {
-          sessionId,
-          streetViewUrl,
+          sessionId: sessionId.toString(), // Ensure sessionId is a string
+          imageUrl: streetViewUrl, // Standardize property name to match test expectations
           location: {
             lat: gameLocation.lat,
             lng: gameLocation.lng,

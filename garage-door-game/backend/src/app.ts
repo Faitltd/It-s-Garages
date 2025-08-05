@@ -16,7 +16,7 @@ import dataRoutes from './routes/data';
 import estimateRoutes from './routes/estimate';
 import dataEntryRoutes from './routes/dataEntry';
 import validationGameRoutes from './routes/validationGame';
-import testRoutes from './routes/test';
+import testRoutes from './routes/testRoutes';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
