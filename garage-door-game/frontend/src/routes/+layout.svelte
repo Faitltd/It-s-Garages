@@ -4,7 +4,8 @@
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
-
+	import { authStore } from '$lib/stores/auth';
+	import { onMount } from 'svelte';
 
 	let { children } = $props();
 	let isMenuOpen = $state(false);
@@ -18,34 +19,32 @@
 		isMenuOpen = false;
 	}
 
-	// Check authentication status
-	function checkAuth() {
-		if (!browser) return;
-
-		const token = localStorage.getItem('authToken');
-		const userData = localStorage.getItem('user');
-
-		if (token && userData) {
-			user = JSON.parse(userData);
-		}
-	}
-
 	// Logout function
 	function logout() {
-		if (!browser) return;
-
-		localStorage.removeItem('authToken');
-		localStorage.removeItem('user');
+		authStore.logout();
 		user = null;
-		goto('/login');
+		goto('/');
 	}
 
-	// Close menu when route changes and check auth
+	// Initialize auth and subscribe to changes
+	onMount(() => {
+		if (browser) {
+			authStore.init();
+		}
+	});
+
+	// Subscribe to auth store changes
 	$effect(() => {
+		const unsubscribe = authStore.subscribe((auth) => {
+			user = auth.isAuthenticated ? auth.user : null;
+		});
+
+		// Close menu when route changes
 		if ($page.url.pathname) {
 			isMenuOpen = false;
 		}
-		checkAuth();
+
+		return unsubscribe;
 	});
 </script>
 

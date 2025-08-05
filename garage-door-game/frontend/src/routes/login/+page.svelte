@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { browser } from '$app/environment';
+	import { authStore } from '$lib/stores/auth';
 
 	let email = '';
 	let password = '';
@@ -37,11 +37,8 @@
 			const data = await response.json();
 
 			if (response.ok) {
-				// Store token in localStorage
-				if (browser) {
-					localStorage.setItem('authToken', data.data.token);
-					localStorage.setItem('user', JSON.stringify(data.data.user));
-				}
+				// Use authStore to handle login
+				authStore.login(data.data.user, data.data.token);
 				goto('/');
 			} else {
 				error = data.error?.message || 'Login failed';
@@ -81,11 +78,8 @@
 			const data = await response.json();
 
 			if (response.ok) {
-				// Store token in localStorage
-				if (browser) {
-					localStorage.setItem('authToken', data.data.token);
-					localStorage.setItem('user', JSON.stringify(data.data.user));
-				}
+				// Use authStore to handle login
+				authStore.login(data.data.user, data.data.token);
 				goto('/');
 			} else {
 				error = data.error?.message || 'Registration failed';
