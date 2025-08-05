@@ -25,10 +25,11 @@ export interface CentennialAddress {
 export const getRandomCentennialAddress = (): Promise<CentennialAddress | null> => {
   return new Promise((resolve, reject) => {
     const stmt = db.prepare(`
-      SELECT * FROM centennial_addresses 
-      WHERE address IS NOT NULL 
+      SELECT * FROM centennial_addresses
+      WHERE address IS NOT NULL
         AND address != ''
-      ORDER BY RANDOM() 
+        AND (garage_not_visible IS NULL OR garage_not_visible = 0)
+      ORDER BY RANDOM()
       LIMIT 1
     `);
 
@@ -49,11 +50,12 @@ export const getRandomCentennialAddress = (): Promise<CentennialAddress | null> 
 export const getRandomCentennialAddressExcluding = (excludeId: number): Promise<CentennialAddress | null> => {
   return new Promise((resolve, reject) => {
     const stmt = db.prepare(`
-      SELECT * FROM centennial_addresses 
-      WHERE address IS NOT NULL 
+      SELECT * FROM centennial_addresses
+      WHERE address IS NOT NULL
         AND address != ''
         AND id != ?
-      ORDER BY RANDOM() 
+        AND (garage_not_visible IS NULL OR garage_not_visible = 0)
+      ORDER BY RANDOM()
       LIMIT 1
     `);
 
@@ -63,6 +65,29 @@ export const getRandomCentennialAddressExcluding = (excludeId: number): Promise<
         reject(err);
       } else {
         resolve(row as CentennialAddress || null);
+      }
+    });
+  });
+};
+
+/**
+ * Mark a Centennial address as having garage not visible
+ */
+export const markAddressAsNotVisible = (addressId: number): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const stmt = db.prepare(`
+      UPDATE centennial_addresses
+      SET garage_not_visible = 1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+
+    stmt.run([addressId], function(err) {
+      if (err) {
+        console.error('Error marking address as not visible:', err);
+        reject(err);
+      } else {
+        console.log(`✅ Marked address ${addressId} as garage not visible`);
+        resolve();
       }
     });
   });

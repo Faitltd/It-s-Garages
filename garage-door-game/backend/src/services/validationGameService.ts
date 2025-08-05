@@ -1,5 +1,5 @@
 import { db } from '../config/database';
-import { getRandomCentennialAddress, getRandomCentennialAddressExcluding, getCentennialAddressWithStreetView } from './centennialAddressService';
+import { getRandomCentennialAddress, getRandomCentennialAddressExcluding, getCentennialAddressWithStreetView, markAddressAsNotVisible } from './centennialAddressService';
 
 export interface ValidationGameSession {
   sessionId: string;
@@ -27,6 +27,7 @@ export interface GameGuess {
   garage_door_type: string;
   confidence: number;
   skipped?: boolean;
+  notVisible?: boolean;
 }
 
 export interface ValidationResult {
@@ -127,6 +128,33 @@ export const submitValidationGuess = async (
       await saveValidationGameResult(session, guess, result);
 
       // Don't update user stats for skipped questions
+      activeSessions.delete(sessionId);
+      return result;
+    }
+
+    // Handle "garage not visible" submissions
+    if (guess.notVisible) {
+      // Mark the address as not visible in the database
+      await markAddressAsNotVisible(session.centennialAddressId);
+
+      const result: ValidationResult = {
+        correct: false,
+        accuracy: 0,
+        pointsEarned: 0,
+        correctAnswer: session.correctAnswer,
+        feedback: 'Address marked as "garage not visible". This address will not appear in future games. No points awarded.',
+        breakdown: {
+          countAccuracy: 0,
+          sizeAccuracy: 0,
+          typeAccuracy: 0,
+          overallAccuracy: 0
+        }
+      };
+
+      // Save not visible result
+      await saveValidationGameResult(session, guess, result);
+
+      // Don't update user stats for not visible submissions
       activeSessions.delete(sessionId);
       return result;
     }

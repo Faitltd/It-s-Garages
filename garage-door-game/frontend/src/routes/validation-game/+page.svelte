@@ -90,7 +90,7 @@
     }, 1000);
   }
 
-  async function submitGuess(skip = false) {
+  async function submitGuess(skip = false, notVisible = false) {
     if (timer) clearInterval(timer);
     loading = true;
 
@@ -98,11 +98,12 @@
       const auth = get(authStore);
       const payload = {
         sessionId,
-        skipped: skip
+        skipped: skip,
+        notVisible: notVisible
       };
 
-      // Only include guess data if not skipping
-      if (!skip) {
+      // Only include guess data if not skipping or marking as not visible
+      if (!skip && !notVisible) {
         Object.assign(payload, {
           garage_door_count,
           garage_door_width,
@@ -389,19 +390,27 @@
                   />
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     on:click={() => submitGuess(true)}
                     disabled={loading}
-                    class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:opacity-50"
+                    class="px-3 py-2 bg-gray-500 text-white text-sm rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:opacity-50"
                   >
                     {loading ? 'Skipping...' : 'Skip Question'}
                   </button>
                   <button
+                    type="button"
+                    on:click={() => submitGuess(false, true)}
+                    disabled={loading}
+                    class="px-3 py-2 bg-orange-500 text-white text-sm rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400 disabled:opacity-50"
+                  >
+                    {loading ? 'Marking...' : 'Garage Not Visible'}
+                  </button>
+                  <button
                     type="submit"
                     disabled={loading}
-                    class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+                    class="px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
                   >
                     {loading ? 'Submitting...' : 'Submit Guess'}
                   </button>

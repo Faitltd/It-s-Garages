@@ -17,12 +17,13 @@ const router = express.Router();
 // Validation schemas
 const submitGuessSchema = Joi.object({
   sessionId: Joi.string().required(),
-  garage_door_count: Joi.number().integer().min(1).max(10).when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.required() }),
-  garage_door_width: Joi.number().positive().when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.required() }),
-  garage_door_height: Joi.number().positive().when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.required() }),
-  garage_door_type: Joi.string().valid('single', 'double', 'triple', 'commercial', 'custom').when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.required() }),
-  confidence: Joi.number().min(1).max(5).when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.required() }),
-  skipped: Joi.boolean().default(false)
+  garage_door_count: Joi.number().integer().min(1).max(10).when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.when('notVisible', { is: true, then: Joi.optional(), otherwise: Joi.required() }) }),
+  garage_door_width: Joi.number().positive().when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.when('notVisible', { is: true, then: Joi.optional(), otherwise: Joi.required() }) }),
+  garage_door_height: Joi.number().positive().when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.when('notVisible', { is: true, then: Joi.optional(), otherwise: Joi.required() }) }),
+  garage_door_type: Joi.string().valid('single', 'double', 'triple', 'commercial', 'custom').when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.when('notVisible', { is: true, then: Joi.optional(), otherwise: Joi.required() }) }),
+  confidence: Joi.number().min(1).max(5).when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.when('notVisible', { is: true, then: Joi.optional(), otherwise: Joi.required() }) }),
+  skipped: Joi.boolean().default(false),
+  notVisible: Joi.boolean().default(false)
 });
 
 /**
