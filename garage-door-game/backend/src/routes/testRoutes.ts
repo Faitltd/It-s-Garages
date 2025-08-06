@@ -8,11 +8,11 @@ router.get('/streetview-test', async (req, res) => {
   try {
     const googleService = new GoogleApiService();
     
-    // Test with a known location (San Francisco)
+    // Test with a known location (San Francisco) - using optimized image size
     const testUrl = googleService.buildStreetViewUrl({
       lat: 37.7749,
       lng: -122.4194,
-      size: '640x640'
+      size: '480x480' // Optimized size for performance testing
     });
     
     console.log('Generated Street View URL:', testUrl);

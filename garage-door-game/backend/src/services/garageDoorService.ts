@@ -188,11 +188,11 @@ export class GarageDoorService {
     estimate: PriceEstimate;
   }> {
     try {
-      // 1. Get Street View image
+      // 1. Get Street View image - optimized size for performance
       const streetViewUrl = googleApiService.buildStreetViewUrl({
         lat,
         lng,
-        size: '640x640',
+        size: '480x480', // Optimized size: 44% smaller for faster processing
         heading: Math.floor(Math.random() * 360),
         pitch: -10,
         fov: 90

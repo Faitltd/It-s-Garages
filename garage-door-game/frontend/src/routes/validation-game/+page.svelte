@@ -30,6 +30,18 @@
 
   // Check authentication
   onMount(() => {
+    // Suppress service worker errors from browser extensions
+    window.addEventListener('unhandledrejection', function(event) {
+      if (event.reason?.message?.includes('chrome-extension') ||
+          event.reason?.message?.includes('Failed to execute \'put\' on \'Cache\'')) {
+        console.warn('Browser extension service worker error (suppressed):', event.reason.message);
+        event.preventDefault();
+      }
+    });
+
+    // Initialize auth store to load token from localStorage
+    authStore.init();
+
     const auth = get(authStore);
     if (!auth.isAuthenticated) {
       goto('/login');
@@ -44,6 +56,39 @@
     { value: 'custom', label: 'Custom' }
   ];
 
+  const commonDoorSizes = [
+    { value: '8x7', label: '8×7 ft (Single)', width: 8, height: 7 },
+    { value: '9x7', label: '9×7 ft (Single)', width: 9, height: 7 },
+    { value: '8x8', label: '8×8 ft (Single)', width: 8, height: 8 },
+    { value: '9x8', label: '9×8 ft (Single)', width: 9, height: 8 },
+    { value: '16x7', label: '16×7 ft (Double)', width: 16, height: 7 },
+    { value: '16x8', label: '16×8 ft (Double)', width: 16, height: 8 },
+    { value: '18x7', label: '18×7 ft (Double)', width: 18, height: 7 },
+    { value: '18x8', label: '18×8 ft (Double)', width: 18, height: 8 },
+    { value: 'custom', label: 'Custom Size', width: 0, height: 0 }
+  ];
+
+  // Multiple doors support
+  let doors = [{ size: '8x7', width: 8, height: 7, type: 'single' }];
+
+  function addDoor() {
+    doors = [...doors, { size: '8x7', width: 8, height: 7, type: 'single' }];
+  }
+
+  function removeDoor(index: number) {
+    if (doors.length > 1) {
+      doors = doors.filter((_, i) => i !== index);
+    }
+  }
+
+  function updateDoorSize(index: number, sizeValue: string) {
+    const size = commonDoorSizes.find(s => s.value === sizeValue);
+    if (size) {
+      doors[index] = { ...doors[index], size: sizeValue, width: size.width, height: size.height };
+      doors = [...doors]; // Trigger reactivity
+    }
+  }
+
   async function startGame() {
     console.log('startGame called');
     loading = true;
@@ -52,27 +97,37 @@
     try {
       const auth = get(authStore);
       console.log('Starting game with auth:', auth);
-      const response = await fetch(`${getApiBase()}/data-entry/centennial-address`, {
-        method: 'GET',
+
+      if (!auth.token) {
+        console.error('No authentication token found');
+        message = 'Authentication required. Please log in again.';
+        goto('/login');
+        return;
+      }
+
+      const response = await fetch(`${getApiBase()}/validation-game/start`, {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${auth.token}`
-        }
+        },
+        body: JSON.stringify({})
       });
 
       const data = await response.json();
 
       if (data.success && data.data) {
-        sessionId = `game_${Date.now()}`; // Generate a simple session ID
+        sessionId = data.data.sessionId;
         address = data.data.address;
-        imageUrl = data.data.streetViewUrl;
+        imageUrl = data.data.imageUrl;
         imageError = false; // Reset error state
-        timeLimit = 60; // Default time limit
+        timeLimit = data.data.timeLimit || 60;
         timeLeft = timeLimit;
 
         gameState = 'playing';
         startTimer();
       } else {
-        message = data.error?.message || 'Failed to load address';
+        message = data.error?.message || 'Failed to start game';
       }
     } catch (error) {
       console.error('Start game error:', error);
@@ -93,25 +148,32 @@
   }
 
   async function submitGuess(skip = false, notVisible = false) {
-    console.log('submitGuess called:', { skip, notVisible, sessionId });
+    console.log('submitGuess called:', { skip, notVisible, sessionId, doors });
     if (timer) clearInterval(timer);
     loading = true;
 
     try {
       const auth = get(authStore);
       console.log('Auth state:', auth);
-      // Create payload for data-entry submit endpoint
+
+      // Create payload for validation game endpoint
+      const totalWidth = doors.reduce((sum, door) => sum + door.width, 0);
+      const avgHeight = doors.reduce((sum, door) => sum + door.height, 0) / doors.length;
+
       const payload = {
-        address: address,
-        garage_door_count: skip || notVisible ? 0 : garage_door_count,
-        garage_door_width: skip || notVisible ? 0 : garage_door_width,
-        garage_door_height: skip || notVisible ? 0 : garage_door_height,
-        garage_door_type: skip || notVisible ? 'single' : garage_door_type,
-        confidence_level: skip || notVisible ? 1 : confidence,
-        notes: skip ? 'Skipped in validation game' : (notVisible ? 'No door visible in validation game' : 'Validation game submission')
+        sessionId: sessionId,
+        skipped: skip,
+        notVisible: notVisible,
+        ...((!skip && !notVisible) && {
+          garage_door_count: doors.length,
+          garage_door_width: totalWidth,
+          garage_door_height: avgHeight,
+          garage_door_type: doors.length > 1 ? 'custom' : doors[0]?.type || 'single',
+          confidence: confidence
+        })
       };
 
-      const response = await fetch(`${getApiBase()}/data-entry/submit`, {
+      const response = await fetch(`${getApiBase()}/validation-game/guess`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -131,12 +193,8 @@
         totalScore += points;
         questionsAnswered++;
 
-        gameResult = {
-          points: points,
-          correct: true, // For now, assume all submissions are valid
-          feedback: skip ? 'Question skipped' : (notVisible ? 'No door visible' : 'Submission recorded')
-        };
-        gameState = 'question-result';
+        // Skip result screen and go directly to next question
+        nextQuestion();
       } else {
         message = data.error?.message || 'Failed to submit guess';
       }
@@ -154,7 +212,15 @@
 
     try {
       const auth = get(authStore);
-      const response = await fetch(`${getApiBase()}/data-entry/centennial-address`, {
+
+      if (!auth.token) {
+        console.error('No authentication token found');
+        message = 'Authentication required. Please log in again.';
+        goto('/login');
+        return;
+      }
+
+      const response = await fetch(`${getApiBase()}/validation-game/next-question`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -168,16 +234,13 @@
       if (data.success && data.data) {
         // Update with new question data
         address = data.data.address;
-        imageUrl = data.data.streetViewUrl;
+        imageUrl = data.data.imageUrl;
         imageError = false;
         timeLimit = 60;
         timeLeft = timeLimit;
 
         // Reset form
-        garage_door_count = 1;
-        garage_door_width = 8;
-        garage_door_height = 7;
-        garage_door_type = 'single';
+        doors = [{ size: '8x7', width: 8, height: 7, type: 'single' }];
         confidence = 3;
 
         gameState = 'playing';
@@ -326,58 +389,90 @@
               <h3 class="text-sm font-bold text-gray-300 mb-3">YOUR GUESS:</h3>
 
               <form on:submit|preventDefault={() => submitGuess()} class="space-y-3">
-                <!-- Door Count -->
+                <!-- Multiple Doors -->
                 <div>
-                  <label class="block text-xs font-bold text-gray-400 mb-1">
-                    DOORS
-                  </label>
-                  <select bind:value={garage_door_count} class="w-full px-2 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm">
-                    {#each [1, 2, 3, 4, 5] as count}
-                      <option value={count}>{count}</option>
-                    {/each}
-                  </select>
-                </div>
-
-                <!-- Dimensions -->
-                <div class="grid grid-cols-2 gap-2">
-                  <div>
-                    <label class="block text-xs font-bold text-gray-400 mb-1">
-                      WIDTH (ft)
+                  <div class="flex justify-between items-center mb-2">
+                    <label class="block text-xs font-bold text-gray-400">
+                      GARAGE DOORS ({doors.length})
                     </label>
-                    <input
-                      type="number"
-                      bind:value={garage_door_width}
-                      min="4"
-                      max="20"
-                      step="0.5"
-                      class="w-full px-2 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm"
-                    />
+                    <button
+                      type="button"
+                      on:click={addDoor}
+                      class="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"
+                    >
+                      + Add Door
+                    </button>
                   </div>
-                  <div>
-                    <label class="block text-xs font-bold text-gray-400 mb-1">
-                      HEIGHT (ft)
-                    </label>
-                    <input
-                      type="number"
-                      bind:value={garage_door_height}
-                      min="6"
-                      max="12"
-                      step="0.5"
-                      class="w-full px-2 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm"
-                    />
-                  </div>
-                </div>
 
-                <!-- Door Type -->
-                <div>
-                  <label class="block text-xs font-bold text-gray-400 mb-1">
-                    TYPE
-                  </label>
-                  <select bind:value={garage_door_type} class="w-full px-2 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm">
-                    {#each doorTypes as type}
-                      <option value={type.value}>{type.label}</option>
-                    {/each}
-                  </select>
+                  {#each doors as door, index}
+                    <div class="bg-gray-800 p-3 rounded border border-gray-600 mb-2">
+                      <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-gray-300">Door {index + 1}</span>
+                        {#if doors.length > 1}
+                          <button
+                            type="button"
+                            on:click={() => removeDoor(index)}
+                            class="text-red-400 hover:text-red-300 text-xs"
+                          >
+                            Remove
+                          </button>
+                        {/if}
+                      </div>
+
+                      <div class="space-y-2">
+                        <!-- Door Size -->
+                        <div>
+                          <label for="door-size-{index}" class="block text-xs font-bold text-gray-400 mb-1">
+                            SIZE
+                          </label>
+                          <select
+                            id="door-size-{index}"
+                            bind:value={door.size}
+                            on:change={(e) => updateDoorSize(index, (e.target as HTMLSelectElement).value)}
+                            class="w-full px-2 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                          >
+                            {#each commonDoorSizes as size}
+                              <option value={size.value}>{size.label}</option>
+                            {/each}
+                          </select>
+                        </div>
+
+                        <!-- Custom dimensions (only show if custom is selected) -->
+                        {#if door.size === 'custom'}
+                          <div class="grid grid-cols-2 gap-2">
+                            <div>
+                              <label for="door-width-{index}" class="block text-xs font-bold text-gray-400 mb-1">
+                                WIDTH (ft)
+                              </label>
+                              <input
+                                id="door-width-{index}"
+                                type="number"
+                                bind:value={door.width}
+                                min="4"
+                                max="20"
+                                step="0.5"
+                                class="w-full px-2 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label for="door-height-{index}" class="block text-xs font-bold text-gray-400 mb-1">
+                                HEIGHT (ft)
+                              </label>
+                              <input
+                                id="door-height-{index}"
+                                type="number"
+                                bind:value={door.height}
+                                min="6"
+                                max="12"
+                                step="0.5"
+                                class="w-full px-2 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                              />
+                            </div>
+                          </div>
+                        {/if}
+                      </div>
+                    </div>
+                  {/each}
                 </div>
 
                 <!-- Confidence -->

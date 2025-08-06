@@ -2,6 +2,25 @@ import { db } from '../config/database';
 import { GoogleApiService } from './googleApiService';
 import { isHouse } from './overpassFilter';
 
+/**
+ * Optimized Address Pool for ML-Ready Game Performance
+ * Eliminates expensive ORDER BY RANDOM() queries
+ */
+interface AddressPool {
+  residential: number[];
+  all: number[];
+  lastRefresh: number;
+}
+
+// In-memory address pool cache (refreshed every 5 minutes)
+let addressPool: AddressPool = {
+  residential: [],
+  all: [],
+  lastRefresh: 0
+};
+
+const POOL_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
 export interface CentennialAddress {
   id: number;
   name: string;
@@ -21,11 +40,97 @@ export interface CentennialAddress {
 }
 
 /**
- * Get a random Centennial address
+ * Refresh the address pool cache for optimized random selection
  */
-export const getRandomCentennialAddress = (): Promise<CentennialAddress | null> => {
+const refreshAddressPool = async (): Promise<void> => {
   return new Promise((resolve, reject) => {
-    // First try to get a residential address
+    // Get all residential address IDs using optimized index
+    const residentialQuery = `
+      SELECT id FROM centennial_addresses
+      WHERE is_residential = 1
+        AND (garage_not_visible IS NULL OR garage_not_visible = 0)
+        AND address IS NOT NULL
+        AND address != ''
+      ORDER BY id
+    `;
+
+    db.all(residentialQuery, [], (err, residentialRows: any[]) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+
+      // Get all valid address IDs as fallback
+      const allQuery = `
+        SELECT id FROM centennial_addresses
+        WHERE address IS NOT NULL
+          AND address != ''
+          AND (garage_not_visible IS NULL OR garage_not_visible = 0)
+        ORDER BY id
+      `;
+
+      db.all(allQuery, [], (allErr, allRows: any[]) => {
+        if (allErr) {
+          reject(allErr);
+          return;
+        }
+
+        addressPool = {
+          residential: residentialRows.map(row => row.id),
+          all: allRows.map(row => row.id),
+          lastRefresh: Date.now()
+        };
+
+        console.log(`[PERF] Address pool refreshed: ${addressPool.residential.length} residential, ${addressPool.all.length} total`);
+        resolve();
+      });
+    });
+  });
+};
+
+/**
+ * Get a random Centennial address using optimized pool selection
+ * Performance: O(1) instead of O(n log n)
+ */
+export const getRandomCentennialAddress = async (): Promise<CentennialAddress | null> => {
+  // Refresh pool if needed
+  if (Date.now() - addressPool.lastRefresh > POOL_REFRESH_INTERVAL || addressPool.residential.length === 0) {
+    try {
+      await refreshAddressPool();
+    } catch (error) {
+      console.error('Error refreshing address pool:', error);
+      // Fall back to old method if pool refresh fails
+      return getRandomCentennialAddressLegacy();
+    }
+  }
+
+  // Select random ID from pool
+  const pool = addressPool.residential.length > 0 ? addressPool.residential : addressPool.all;
+  if (pool.length === 0) {
+    return null;
+  }
+
+  const randomIndex = Math.floor(Math.random() * pool.length);
+  const selectedId = pool[randomIndex];
+
+  // Fetch the address by ID (very fast with primary key)
+  return new Promise((resolve, reject) => {
+    const stmt = db.prepare(`SELECT * FROM centennial_addresses WHERE id = ?`);
+    stmt.get([selectedId], (err, row) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(row as CentennialAddress || null);
+      }
+    });
+  });
+};
+
+/**
+ * Legacy method as fallback (kept for reliability)
+ */
+const getRandomCentennialAddressLegacy = (): Promise<CentennialAddress | null> => {
+  return new Promise((resolve, reject) => {
     const residentialStmt = db.prepare(`
       SELECT * FROM centennial_addresses
       WHERE address IS NOT NULL
@@ -43,8 +148,6 @@ export const getRandomCentennialAddress = (): Promise<CentennialAddress | null> 
       } else if (row) {
         resolve(row as CentennialAddress);
       } else {
-        // Fallback to any address if no residential ones are available
-        console.log('No residential addresses found, falling back to any address');
         const fallbackStmt = db.prepare(`
           SELECT * FROM centennial_addresses
           WHERE address IS NOT NULL
@@ -56,7 +159,6 @@ export const getRandomCentennialAddress = (): Promise<CentennialAddress | null> 
 
         fallbackStmt.get([], (fallbackErr, fallbackRow) => {
           if (fallbackErr) {
-            console.error('Error getting fallback Centennial address:', fallbackErr);
             reject(fallbackErr);
           } else {
             resolve(fallbackRow as CentennialAddress || null);
@@ -281,12 +383,12 @@ export const getCentennialAddressWithStreetView = async (addressId?: number): Pr
       return null;
     }
 
-    // Generate Street View URL only for residential addresses
+    // Generate Street View URL only for residential addresses - optimized size for performance
     const googleService = new GoogleApiService();
     const streetViewUrl = googleService.buildStreetViewUrl({
       lat: address.latitude,
       lng: address.longitude,
-      size: '640x640',
+      size: '480x480', // Optimized size: 44% smaller than 640x640
       heading: Math.floor(Math.random() * 360), // Random heading
       pitch: -10,
       fov: 90

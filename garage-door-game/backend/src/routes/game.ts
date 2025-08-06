@@ -90,11 +90,11 @@ router.post('/start',
         }
       }
 
-      // Build Street View URL optimized for residential garage door viewing
+      // Build Street View URL optimized for residential garage door viewing - performance optimized
       const streetViewUrl = googleApiService.buildStreetViewUrl({
         lat: gameLocation.lat,
         lng: gameLocation.lng,
-        size: '640x640',
+        size: '480x480', // Optimized size: 44% smaller for faster mobile loading
         heading: Math.floor(Math.random() * 360), // Random heading to show different house angles
         pitch: -10, // Slightly downward angle to better capture garage doors
         fov: 90 // Standard field of view for house viewing

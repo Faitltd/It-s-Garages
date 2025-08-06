@@ -44,8 +44,15 @@
 				error = data.error?.message || 'Login failed';
 			}
 		} catch (err) {
-			error = 'Network error. Please try again.';
 			console.error('Login error:', err);
+			// Provide specific error messages for common issues
+			if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+				error = 'Connection failed. Please check your internet connection and try again.';
+			} else if (err instanceof Error && err.message?.includes('CORS')) {
+				error = 'Authentication service temporarily unavailable. Please try again in a moment.';
+			} else {
+				error = 'Network error. Please try again.';
+			}
 		} finally {
 			loading = false;
 		}
@@ -85,8 +92,15 @@
 				error = data.error?.message || 'Registration failed';
 			}
 		} catch (err) {
-			error = 'Network error. Please try again.';
 			console.error('Registration error:', err);
+			// Provide specific error messages for common issues
+			if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+				error = 'Connection failed. Please check your internet connection and try again.';
+			} else if (err instanceof Error && err.message?.includes('CORS')) {
+				error = 'Authentication service temporarily unavailable. Please try again in a moment.';
+			} else {
+				error = 'Network error. Please try again.';
+			}
 		} finally {
 			loading = false;
 		}
@@ -117,8 +131,8 @@
 	<title>{isLogin ? 'Login' : 'Register'} - It's Garages</title>
 </svelte:head>
 
-<div class="min-h-screen flex flex-col justify-center py-12 px-4">
-	<div class="max-w-md mx-auto w-full">
+<div class="min-h-screen flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+	<div class="max-w-md mx-auto w-full space-y-8">
 		<div class="text-box power-up mb-6">
 			<h1 class="text-2xl mb-4">🏠 IT'S GARAGES</h1>
 			<h2 class="text-lg">
@@ -235,7 +249,7 @@
 			</form>
 
 			<!-- Toggle between login and register -->
-			<div class="mt-6 text-center">
+			<div class="mt-6 text-center w-full flex justify-center">
 				<button
 					type="button"
 					on:click={toggleMode}

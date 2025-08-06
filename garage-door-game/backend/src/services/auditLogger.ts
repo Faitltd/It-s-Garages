@@ -117,7 +117,7 @@ class AuditLogger {
   }
 
   /**
-   * Log Google API usage
+   * Log Google API usage (Legacy)
    */
   public logGoogleApiUsage(req: Request | AuthenticatedRequest, apiType: string, success: boolean, details?: any, errorMessage?: string): void {
     const baseEntry = this.createBaseEntry(req);
@@ -137,6 +137,77 @@ class AuditLogger {
     };
 
     this.writeLog(entry);
+  }
+
+  /**
+   * Log API usage for any provider (Google, Bing, etc.)
+   */
+  public logApiUsage(details: {
+    provider: string;
+    keyType: string;
+    usageCount: number;
+    responseTime: number;
+    cached?: boolean;
+    validated?: boolean;
+    req?: Request | AuthenticatedRequest;
+  }): void {
+    const baseEntry = details.req ? this.createBaseEntry(details.req) : {
+      timestamp: new Date().toISOString(),
+      ip: 'system',
+      userAgent: 'system'
+    };
+
+    const entry = {
+      ...baseEntry,
+      level: 'INFO' as const,
+      event: 'API_USAGE',
+      resource: `${details.provider}_api`,
+      action: details.keyType,
+      success: true,
+      details: {
+        provider: details.provider,
+        keyType: details.keyType,
+        usageCount: details.usageCount,
+        responseTime: details.responseTime,
+        cached: details.cached || false,
+        validated: details.validated
+      }
+    };
+
+    this.writeLog(entry);
+  }
+
+  /**
+   * Log security events without request context
+   */
+  public logSecurityEvent(details: {
+    event: string;
+    provider?: string;
+    keyType?: string;
+    severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    timestamp: Date;
+    details?: any;
+  }): void {
+    const entry = {
+      timestamp: details.timestamp.toISOString(),
+      level: 'SECURITY' as const,
+      event: `SECURITY_${details.event}`,
+      ip: 'system',
+      resource: details.provider ? `${details.provider}_api` : 'security',
+      action: details.event,
+      success: false,
+      details: {
+        severity: details.severity,
+        provider: details.provider,
+        keyType: details.keyType,
+        ...details.details
+      }
+    };
+
+    this.writeLog(entry);
+
+    // Always log security events to console with severity
+    console.warn(`[SECURITY ${details.severity}] ${details.event}:`, details.details);
   }
 
   /**

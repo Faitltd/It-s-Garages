@@ -77,6 +77,12 @@ class GoogleApiService {
    * Get Street View API key with usage tracking
    */
   public getStreetViewApiKey(): string {
+    // Handle missing API key gracefully
+    if (!this.streetViewApiKey || this.streetViewApiKey === 'your-api-key-here') {
+      console.warn('Street View API key not configured');
+      return '';
+    }
+
     if (!this.checkUsageLimit('streetView')) {
       throw createError('Daily Google API limit exceeded', 429);
     }
@@ -89,6 +95,12 @@ class GoogleApiService {
    * Get Maps API key with usage tracking
    */
   public getMapsApiKey(): string {
+    // Handle missing API key gracefully
+    if (!this.mapsApiKey || this.mapsApiKey === 'your-api-key-here') {
+      console.warn('Maps API key not configured');
+      return '';
+    }
+
     if (!this.checkUsageLimit('maps')) {
       throw createError('Daily Google API limit exceeded', 429);
     }
@@ -114,6 +126,7 @@ class GoogleApiService {
 
   /**
    * Build Street View URL with proper parameters
+   * Default size optimized for performance: 480x480 (44% smaller than 640x640)
    */
   public buildStreetViewUrl(params: {
     location?: string;
@@ -126,10 +139,10 @@ class GoogleApiService {
   }): string {
     const apiKey = this.getStreetViewApiKey();
 
-    // Temporary fallback for API key issues - return placeholder
-    if (!apiKey || apiKey === 'your-api-key-here') {
+    // Fallback for API key issues - return placeholder with optimized size
+    if (!apiKey) {
       console.warn('Street View API key not configured, using placeholder');
-      return 'https://via.placeholder.com/640x640/cccccc/666666?text=Street+View+Unavailable';
+      return 'https://via.placeholder.com/480x480/cccccc/666666?text=Street+View+Unavailable';
     }
 
     const baseUrl = 'https://maps.googleapis.com/maps/api/streetview';
@@ -145,8 +158,8 @@ class GoogleApiService {
       throw createError('Either location or lat/lng coordinates are required', 400);
     }
 
-    // Optional parameters with defaults
-    urlParams.append('size', params.size || '640x640');
+    // Optional parameters with defaults - optimized size for performance
+    urlParams.append('size', params.size || '480x480');
     urlParams.append('key', apiKey);
 
     if (params.heading !== undefined) {

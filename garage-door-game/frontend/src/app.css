@@ -120,6 +120,7 @@ body::before {
     width: 100%;
     max-width: 320px;
     margin: 8px auto;
+    display: block;
   }
 }
 
@@ -197,6 +198,24 @@ body::before {
     font-size: 16px; /* Prevents zoom on iOS */
     padding: 20px;
     min-height: 60px;
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+    display: block;
+  }
+
+  /* Ensure all interactive elements meet 44px minimum touch target */
+  button, input, select, textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Center all form elements on mobile */
+  .text-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
 }
 
@@ -208,6 +227,7 @@ body::before {
   gap: 16px;
   max-width: 500px;
   margin: 0 auto;
+  padding: 0 16px;
 }
 
 .form-group {
@@ -221,6 +241,26 @@ body::before {
   font-size: 14px;
   margin-bottom: 8px;
   text-shadow: 2px 2px 0 #000;
+  text-align: center;
+}
+
+/* Mobile form adjustments */
+@media (max-width: 768px) {
+  .form-container {
+    padding: 0 8px;
+    gap: 20px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .form-label {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
 }
 
 /* Multiple Choice Options - Mobile First */

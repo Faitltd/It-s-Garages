@@ -70,11 +70,11 @@ export class ComputerVisionService {
     const startTime = Date.now();
     
     try {
-      // 1. Fetch Street View image with optimal parameters for garage door detection
+      // 1. Fetch Street View image with optimal parameters for garage door detection - performance optimized
       const imageUrl = googleApiService.buildStreetViewUrl({
         lat,
         lng,
-        size: '640x640',
+        size: '480x480', // Optimized size: 44% smaller for faster CV processing
         heading: Math.floor(Math.random() * 360), // Try different angles
         pitch: -10,  // Slightly downward to capture garage doors
         fov: 90
@@ -175,7 +175,7 @@ export class ComputerVisionService {
           const imageUrl = googleApiService.buildStreetViewUrl({
             lat,
             lng,
-            size: '640x640',
+            size: '480x480', // Optimized size for training data collection
             heading,
             pitch: -10,
             fov: 90

@@ -132,16 +132,16 @@ class QuestionGenerator {
         return googleApiService.buildStreetViewUrl({
           lat: job.latitude,
           lng: job.longitude,
-          size: '640x640',
+          size: '480x480', // Optimized size for question generation
           heading: 0, // Face north initially
           pitch: -10, // Slightly downward to capture garage doors
           fov: 90
         });
       } else {
-        // Use address-based Street View
+        // Use address-based Street View - optimized size
         return googleApiService.buildStreetViewUrl({
           location: job.address,
-          size: '640x640',
+          size: '480x480', // Optimized size for question generation
           heading: 0,
           pitch: -10,
           fov: 90

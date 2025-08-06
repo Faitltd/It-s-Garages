@@ -98,10 +98,10 @@
 	import { getApiBase } from '$lib/config';
 	const API_BASE = getApiBase();
 
-	// Get auth token from localStorage
+	// Get auth token from localStorage (consistent with auth store)
 	function getAuthToken(): string | null {
 		if (!browser) return null;
-		return localStorage.getItem('authToken');
+		return localStorage.getItem('token');
 	}
 
 	// API call helper
@@ -122,7 +122,7 @@
 		});
 
 		if (response.status === 401) {
-			localStorage.removeItem('authToken');
+			localStorage.removeItem('token');
 			goto('/login');
 			return null;
 		}
@@ -279,7 +279,7 @@
 
 			if (response.ok) {
 				if (browser) {
-					localStorage.setItem('authToken', data.data.token);
+					localStorage.setItem('token', data.data.token);
 					localStorage.setItem('user', JSON.stringify(data.data.user));
 				}
 				user = data.data.user;
@@ -316,7 +316,7 @@
 
 			if (response.ok) {
 				if (browser) {
-					localStorage.setItem('authToken', data.data.token);
+					localStorage.setItem('token', data.data.token);
 					localStorage.setItem('user', JSON.stringify(data.data.user));
 				}
 				user = data.data.user;
@@ -335,7 +335,7 @@
 
 	function logout() {
 		if (browser) {
-			localStorage.removeItem('authToken');
+			localStorage.removeItem('token');
 			localStorage.removeItem('user');
 		}
 		user = null;

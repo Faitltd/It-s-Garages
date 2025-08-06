@@ -502,7 +502,17 @@ export const initializeDatabase = (): Promise<void> => {
       db.run(`CREATE INDEX IF NOT EXISTS idx_validation_game_results_data_entry_id ON validation_game_results(data_entry_id)`);
       db.run(`CREATE INDEX IF NOT EXISTS idx_validation_game_results_created_at ON validation_game_results(created_at)`);
 
-      console.log('Database schema initialized successfully');
+      // Performance optimization indexes for ML data access
+      db.run(`CREATE INDEX IF NOT EXISTS idx_centennial_residential_performance ON centennial_addresses(is_residential, garage_not_visible, id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_centennial_coordinates ON centennial_addresses(latitude, longitude)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_garage_door_data_entries_verified ON garage_door_data_entries(is_verified, confidence_level, created_at)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_garage_door_data_entries_location ON garage_door_data_entries(latitude, longitude)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_garage_door_data_entries_type_size ON garage_door_data_entries(garage_door_type, garage_door_width, garage_door_height)`);
+
+      // Composite index for efficient ML batch processing
+      db.run(`CREATE INDEX IF NOT EXISTS idx_ml_training_composite ON garage_door_data_entries(is_verified, confidence_level, garage_door_type, created_at)`);
+
+      console.log('Database schema and performance indexes initialized successfully');
 
       // Initialize residential cache table
       initializeResidentialCache();

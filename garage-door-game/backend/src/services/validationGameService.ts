@@ -96,15 +96,17 @@ export const submitValidationGuess = async (
         submitted: false,
         pointsEarned: 0,
         feedback: 'Question skipped. No points awarded.',
-        questionsAnswered: session.questionsAnswered,
+        questionsAnswered: session.questionsAnswered + 1,
         totalScore: session.totalScore
       };
 
       // Save skipped result
       await saveValidationGameResult(session, guess, result);
 
-      // Don't update user stats for skipped questions
-      activeSessions.delete(sessionId);
+      // Update session for next question (don't delete session)
+      session.questionsAnswered++;
+      activeSessions.set(sessionId, session);
+
       return result;
     }
 
@@ -117,15 +119,17 @@ export const submitValidationGuess = async (
         submitted: false,
         pointsEarned: 0,
         feedback: 'Address marked as "garage not visible". This address will not appear in future games.',
-        questionsAnswered: session.questionsAnswered,
+        questionsAnswered: session.questionsAnswered + 1,
         totalScore: session.totalScore
       };
 
       // Save not visible result
       await saveValidationGameResult(session, guess, result);
 
-      // Don't update user stats for not visible submissions
-      activeSessions.delete(sessionId);
+      // Update session for next question (don't delete session)
+      session.questionsAnswered++;
+      activeSessions.set(sessionId, session);
+
       return result;
     }
 
@@ -151,10 +155,22 @@ export const submitValidationGuess = async (
     };
 
     // Save game result
-    await saveValidationGameResult(session, guess, result);
+    try {
+      await saveValidationGameResult(session, guess, result);
+      console.log('✅ Validation game result saved successfully');
+    } catch (error) {
+      console.error('❌ Error saving validation game result:', error);
+      throw error;
+    }
 
     // Update user stats
-    await updateUserValidationStats(userId, pointsEarned, 1.0); // Always count as "accurate" since it's data collection
+    try {
+      await updateUserValidationStats(userId, pointsEarned, 1.0); // Always count as "accurate" since it's data collection
+      console.log('✅ User validation stats updated successfully');
+    } catch (error) {
+      console.error('❌ Error updating user validation stats:', error);
+      // Don't throw here, as the main result was saved
+    }
 
     // Update session for next question
     session.questionsAnswered++;
@@ -295,9 +311,9 @@ const saveValidationGameResult = async (
  */
 const updateUserValidationStats = async (userId: number, points: number, accuracy: number): Promise<void> => {
   return new Promise((resolve, reject) => {
-    // First, get current stats
+    // First, get current stats - only use columns that definitely exist
     const getStatsStmt = db.prepare(`
-      SELECT validation_games_played, validation_accuracy_rate, total_points 
+      SELECT total_points, games_played
       FROM users WHERE id = ?
     `);
 
@@ -307,26 +323,21 @@ const updateUserValidationStats = async (userId: number, points: number, accurac
         return;
       }
 
-      const currentGames = row?.validation_games_played || 0;
-      const currentAccuracy = row?.validation_accuracy_rate || 0;
       const currentPoints = row?.total_points || 0;
-
-      // Calculate new averages
-      const newGames = currentGames + 1;
-      const newAccuracy = ((currentAccuracy * currentGames) + accuracy) / newGames;
+      const currentGames = row?.games_played || 0;
       const newPoints = currentPoints + points;
+      const newGames = currentGames + 1;
 
-      // Update user stats
+      // Update user stats - only update columns that definitely exist
       const updateStmt = db.prepare(`
-        UPDATE users 
-        SET validation_games_played = ?, 
-            validation_accuracy_rate = ?, 
-            total_points = ?,
+        UPDATE users
+        SET total_points = ?,
+            games_played = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `);
 
-      updateStmt.run([newGames, newAccuracy, newPoints, userId], function(err) {
+      updateStmt.run([newPoints, newGames, userId], function(err) {
         if (err) {
           reject(err);
           return;

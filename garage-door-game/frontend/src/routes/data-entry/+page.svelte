@@ -24,6 +24,9 @@
 
   // Check authentication
   onMount(() => {
+    // Initialize auth store to load token from localStorage
+    authStore.init();
+
     const auth = get(authStore);
     if (!auth.isAuthenticated) {
       goto('/login');
@@ -100,6 +103,15 @@
 
     try {
       const auth = get(authStore);
+
+      if (!auth.token) {
+        console.error('No authentication token found');
+        message = 'Authentication required. Please log in again.';
+        messageType = 'error';
+        goto('/login');
+        return;
+      }
+
       const response = await fetch(`${getApiBase()}/data-entry/centennial-address`, {
         method: 'GET',
         headers: {

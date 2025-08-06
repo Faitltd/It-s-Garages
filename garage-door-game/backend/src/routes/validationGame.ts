@@ -11,19 +11,22 @@ import {
   endValidationGameSession
 } from '../services/validationGameService';
 import Joi from 'joi';
+import { mlValidationGameSchema, MLDataValidation } from '../schemas/mlDataSchemas';
 
 const router = express.Router();
 
-// Validation schemas
+// ML-standardized validation schemas with enhanced data formatting
 const submitGuessSchema = Joi.object({
-  sessionId: Joi.string().required(),
-  garage_door_count: Joi.number().integer().min(1).max(10).when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.when('notVisible', { is: true, then: Joi.optional(), otherwise: Joi.required() }) }),
-  garage_door_width: Joi.number().positive().when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.when('notVisible', { is: true, then: Joi.optional(), otherwise: Joi.required() }) }),
-  garage_door_height: Joi.number().positive().when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.when('notVisible', { is: true, then: Joi.optional(), otherwise: Joi.required() }) }),
+  sessionId: Joi.string().uuid().required(),
+  garage_door_count: Joi.number().integer().min(0).max(10).when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.when('notVisible', { is: true, then: Joi.optional(), otherwise: Joi.required() }) }),
+  garage_door_width: Joi.number().min(0).max(50).precision(1).when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.when('notVisible', { is: true, then: Joi.optional(), otherwise: Joi.required() }) }),
+  garage_door_height: Joi.number().min(0).max(20).precision(1).when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.when('notVisible', { is: true, then: Joi.optional(), otherwise: Joi.required() }) }),
   garage_door_type: Joi.string().valid('single', 'double', 'triple', 'commercial', 'custom').when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.when('notVisible', { is: true, then: Joi.optional(), otherwise: Joi.required() }) }),
-  confidence: Joi.number().min(1).max(5).when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.when('notVisible', { is: true, then: Joi.optional(), otherwise: Joi.required() }) }),
+  confidence: Joi.number().integer().min(1).max(5).when('skipped', { is: true, then: Joi.optional(), otherwise: Joi.when('notVisible', { is: true, then: Joi.optional(), otherwise: Joi.required() }) }),
   skipped: Joi.boolean().default(false),
-  notVisible: Joi.boolean().default(false)
+  notVisible: Joi.boolean().default(false),
+  time_taken: Joi.number().min(0).precision(2).optional(),
+  user_notes: Joi.string().max(200).optional()
 });
 
 /**
@@ -77,14 +80,16 @@ router.post('/guess',
   async (req: AuthenticatedRequest, res, next): Promise<void> => {
     try {
       const userId = req.user!.userId;
-      const { sessionId, garage_door_count, garage_door_width, garage_door_height, garage_door_type, confidence } = req.body;
+      const { sessionId, garage_door_count, garage_door_width, garage_door_height, garage_door_type, confidence, skipped, notVisible } = req.body;
 
       const guess = {
         garage_door_count,
         garage_door_width,
         garage_door_height,
         garage_door_type,
-        confidence
+        confidence,
+        skipped,
+        notVisible
       };
 
       const result = await submitValidationGuess(sessionId, guess, userId);

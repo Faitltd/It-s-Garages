@@ -12,6 +12,8 @@ import {
   getCentennialAddressStats
 } from '../services/centennialAddressService';
 import { filterResidentialAddresses } from '../scripts/filterResidentialAddresses';
+import { MLDataService, MLBatchExportOptions } from '../services/mlDataService';
+import { mlDataEntrySchema, MLDataValidation } from '../schemas/mlDataSchemas';
 
 const router = express.Router();
 
@@ -21,16 +23,8 @@ const reverseGeocodeSchema = Joi.object({
   longitude: Joi.number().min(-180).max(180).required()
 });
 
-// Validation schema for data entry
-const dataEntrySchema = Joi.object({
-  address: Joi.string().required().min(10).max(200),
-  garage_door_count: Joi.number().integer().min(1).max(10).required(),
-  garage_door_width: Joi.number().positive().required(),
-  garage_door_height: Joi.number().positive().required(),
-  garage_door_type: Joi.string().valid('single', 'double', 'triple', 'commercial', 'custom').required(),
-  notes: Joi.string().max(500).optional(),
-  confidence_level: Joi.number().min(1).max(5).default(3) // 1-5 scale
-});
+// ML-standardized validation schema for data entry
+const dataEntrySchema = mlDataEntrySchema;
 
 interface DataEntry {
   address: string;
@@ -290,11 +284,11 @@ router.post('/submit',
         if (geocodeResult) {
           coordinates = geocodeResult;
           
-          // Get Street View image using coordinates for better accuracy
+          // Get Street View image using coordinates for better accuracy - optimized size
           streetViewUrl = googleApiService.buildStreetViewUrl({
             lat: coordinates.lat,
             lng: coordinates.lng,
-            size: '640x640',
+            size: '480x480', // Optimized size: 44% smaller for faster loading
             heading: 0, // Face north initially
             pitch: -10, // Slightly downward to capture garage doors
             fov: 90
@@ -306,7 +300,9 @@ router.post('/submit',
       }
 
       // Calculate standardized door size string
-      const doorSize = `${data.garage_door_width}x${data.garage_door_height} feet`;
+      const doorSize = (data.garage_door_width === 0 || data.garage_door_height === 0)
+        ? 'N/A'
+        : `${data.garage_door_width}x${data.garage_door_height} feet`;
       
       // Save to database
       const entryId = await saveDataEntry({
@@ -739,6 +735,276 @@ router.post('/filter-residential',
         success: false,
         error: {
           message: 'Failed to start residential filtering'
+        }
+      });
+    }
+  }
+);
+
+/**
+ * Export ML-ready training data with standardized formatting
+ */
+router.get('/ml-export/training',
+  authenticate,
+  auditDataAccess('data_entry', 'ml_export_training'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      const options: MLBatchExportOptions = {
+        format: (req.query.format as any) || 'json',
+        include_images: req.query.include_images === 'true',
+        confidence_threshold: parseFloat(req.query.confidence_threshold as string) || 0.6,
+        verified_only: req.query.verified_only !== 'false',
+        batch_size: parseInt(req.query.batch_size as string) || 1000
+      };
+
+      if (req.query.start_date && req.query.end_date) {
+        options.date_range = {
+          start: req.query.start_date as string,
+          end: req.query.end_date as string
+        };
+      }
+
+      const trainingData = await MLDataService.exportTrainingData(options);
+
+      // Set appropriate headers for ML data consumption
+      res.set({
+        'Content-Type': 'application/json',
+        'X-ML-Data-Version': '2.0.0',
+        'X-Data-Count': trainingData.length.toString(),
+        'X-Export-Timestamp': new Date().toISOString(),
+        'X-Confidence-Threshold': options.confidence_threshold.toString(),
+        'X-Verified-Only': options.verified_only.toString()
+      });
+
+      res.json({
+        success: true,
+        metadata: {
+          version: '2.0.0',
+          export_timestamp: new Date().toISOString(),
+          record_count: trainingData.length,
+          confidence_threshold: options.confidence_threshold,
+          verified_only: options.verified_only,
+          data_separation: 'ground_truth_only'
+        },
+        data: trainingData
+      });
+
+    } catch (error) {
+      console.error('ML training data export error:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to export ML training data',
+          code: 'ML_EXPORT_ERROR'
+        }
+      });
+    }
+  }
+);
+
+/**
+ * Export ML-ready validation data (user guesses) for model performance analysis
+ */
+router.get('/ml-export/validation',
+  authenticate,
+  auditDataAccess('data_entry', 'ml_export_validation'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      const options: MLBatchExportOptions = {
+        format: (req.query.format as any) || 'json',
+        include_images: false, // Validation data doesn't need images
+        confidence_threshold: 0, // Include all validation attempts
+        verified_only: false,
+        batch_size: parseInt(req.query.batch_size as string) || 1000
+      };
+
+      if (req.query.start_date && req.query.end_date) {
+        options.date_range = {
+          start: req.query.start_date as string,
+          end: req.query.end_date as string
+        };
+      }
+
+      const validationData = await MLDataService.exportValidationData(options);
+
+      res.set({
+        'Content-Type': 'application/json',
+        'X-ML-Data-Version': '2.0.0',
+        'X-Data-Count': validationData.length.toString(),
+        'X-Export-Timestamp': new Date().toISOString(),
+        'X-Data-Type': 'validation_guesses'
+      });
+
+      res.json({
+        success: true,
+        metadata: {
+          version: '2.0.0',
+          export_timestamp: new Date().toISOString(),
+          record_count: validationData.length,
+          data_type: 'validation_guesses',
+          data_separation: 'user_predictions_only'
+        },
+        data: validationData
+      });
+
+    } catch (error) {
+      console.error('ML validation data export error:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to export ML validation data',
+          code: 'ML_VALIDATION_EXPORT_ERROR'
+        }
+      });
+    }
+  }
+);
+
+/**
+ * Stream large ML datasets for efficient processing with progress tracking
+ */
+router.get('/ml-export/stream',
+  authenticate,
+  auditDataAccess('data_entry', 'ml_export_stream'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      const options: MLBatchExportOptions = {
+        format: 'jsonl', // JSON Lines for streaming
+        include_images: req.query.include_images === 'true',
+        confidence_threshold: parseFloat(req.query.confidence_threshold as string) || 0.6,
+        verified_only: req.query.verified_only !== 'false',
+        batch_size: parseInt(req.query.batch_size as string) || 100 // Smaller batches for streaming
+      };
+
+      res.set({
+        'Content-Type': 'application/x-ndjson',
+        'X-ML-Data-Version': '2.0.0',
+        'Transfer-Encoding': 'chunked',
+        'X-Stream-Format': 'progress-enabled'
+      });
+
+      // Stream data in batches with progress tracking
+      for await (const { batch, progress } of MLDataService.streamTrainingData(options)) {
+        // Send progress metadata as comment line
+        res.write(`# Progress: ${progress.total_processed} records processed, ${progress.completion_percentage?.toFixed(1) || 'unknown'}% complete\n`);
+
+        // Send actual data
+        for (const record of batch) {
+          res.write(JSON.stringify(record) + '\n');
+        }
+
+        // Flush to ensure real-time streaming
+        if (res.flush) {
+          res.flush();
+        }
+      }
+
+      res.write('# Export completed\n');
+      res.end();
+
+    } catch (error) {
+      console.error('ML streaming export error:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          error: {
+            message: 'Failed to stream ML data',
+            code: 'ML_STREAM_ERROR'
+          }
+        });
+      }
+    }
+  }
+);
+
+/**
+ * Batch data quality validation endpoint
+ */
+router.post('/ml-export/validate-quality',
+  authenticate,
+  auditDataAccess('data_entry', 'ml_quality_validation'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      const options: MLBatchExportOptions = {
+        format: 'json',
+        include_images: false,
+        confidence_threshold: parseFloat(req.body.confidence_threshold) || 0.6,
+        verified_only: req.body.verified_only !== false,
+        batch_size: parseInt(req.body.batch_size) || 1000,
+        date_range: req.body.date_range
+      };
+
+      const trainingData = await MLDataService.exportTrainingData(options);
+      const qualityReport = MLDataService.validateBatchQuality(trainingData);
+
+      res.json({
+        success: true,
+        metadata: {
+          version: '2.0.0',
+          validation_timestamp: new Date().toISOString(),
+          record_count: trainingData.length,
+          validation_type: 'batch_quality_assessment'
+        },
+        quality_report: qualityReport,
+        recommendations: {
+          data_usability: qualityReport.overall_quality >= 0.7 ? 'suitable_for_ml' : 'needs_improvement',
+          suggested_actions: qualityReport.recommendations,
+          quality_threshold_met: qualityReport.overall_quality >= options.confidence_threshold
+        }
+      });
+
+    } catch (error) {
+      console.error('ML quality validation error:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to validate data quality',
+          code: 'ML_QUALITY_VALIDATION_ERROR'
+        }
+      });
+    }
+  }
+);
+
+/**
+ * Batch processing status endpoint for long-running operations
+ */
+router.get('/ml-export/status/:operation_id',
+  authenticate,
+  auditDataAccess('data_entry', 'ml_export_status'),
+  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+    try {
+      const operationId = req.params.operation_id;
+
+      // In a real implementation, this would check a job queue or cache
+      // For now, return a mock status
+      res.json({
+        success: true,
+        operation_id: operationId,
+        status: 'completed', // 'pending', 'in_progress', 'completed', 'failed'
+        progress: {
+          total_records: 1000,
+          processed_records: 1000,
+          completion_percentage: 100,
+          estimated_time_remaining: 0
+        },
+        result: {
+          export_url: `/api/data-entry/ml-export/download/${operationId}`,
+          format: 'json',
+          file_size_bytes: 2048000,
+          record_count: 1000
+        },
+        created_at: new Date().toISOString(),
+        completed_at: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('ML export status error:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to get export status',
+          code: 'ML_EXPORT_STATUS_ERROR'
         }
       });
     }
