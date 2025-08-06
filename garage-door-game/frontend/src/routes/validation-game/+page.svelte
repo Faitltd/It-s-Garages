@@ -3,6 +3,9 @@
   import { goto } from '$app/navigation';
   import { authStore } from '$lib/stores/auth';
   import { get } from 'svelte/store';
+  import { getApiBase } from '$lib/config';
+
+  const API_BASE = getApiBase();
 
   let gameState = 'menu'; // 'menu', 'playing', 'question-result', 'final-results'
   let sessionId = '';
@@ -27,6 +30,33 @@
   let loading = false;
   let message = '';
 
+  // API call helper
+  async function apiCall(endpoint: string, options: RequestInit = {}) {
+    const auth = get(authStore);
+    if (!auth.token) {
+      goto('/login');
+      return null;
+    }
+
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${auth.token}`,
+        ...options.headers
+      }
+    });
+
+    if (response.status === 401) {
+      // Clear auth and redirect to login
+      authStore.logout();
+      goto('/login');
+      return null;
+    }
+
+    return response;
+  }
+
   // Check authentication
   onMount(() => {
     const auth = get(authStore);
@@ -48,21 +78,11 @@
     message = '';
 
     try {
-      const auth = get(authStore);
-      const response = await fetch('/api/validation-game/start', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${auth.token}`
-        }
+      const response = await apiCall('/validation-game/start', {
+        method: 'POST'
       });
 
-      if (response.status === 401) {
-        message = 'Please log in to play the validation game';
-        // Optionally redirect to login
-        // goto('/login');
-        return;
-      }
+      if (!response) return;
 
       const data = await response.json();
 
@@ -102,7 +122,6 @@
     loading = true;
 
     try {
-      const auth = get(authStore);
       const payload = {
         sessionId,
         skipped: skip,
@@ -120,14 +139,12 @@
         });
       }
 
-      const response = await fetch('/api/validation-game/guess', {
+      const response = await apiCall('/validation-game/guess', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${auth.token}`
-        },
         body: JSON.stringify(payload)
       });
+
+      if (!response) return;
 
       const data = await response.json();
 
@@ -150,15 +167,12 @@
     message = '';
 
     try {
-      const auth = get(authStore);
-      const response = await fetch('/api/validation-game/next-question', {
+      const response = await apiCall('/validation-game/next-question', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${auth.token}`
-        },
         body: JSON.stringify({ sessionId })
       });
+
+      if (!response) return;
 
       const data = await response.json();
 
@@ -195,13 +209,8 @@
 
   async function endSession() {
     try {
-      const auth = get(authStore);
-      await fetch('/api/validation-game/end-session', {
+      await apiCall('/validation-game/end-session', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${auth.token}`
-        },
         body: JSON.stringify({ sessionId })
       });
     } catch (error) {
