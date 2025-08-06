@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Street View Service Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .image-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .streetview-image {
+            max-width: 100%;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .metadata {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .multi-angle {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .angle-image {
+            text-align: center;
+        }
+        .angle-image img {
+            width: 100%;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Enhanced Street View Service Test</h1>
+    
+    <div class="container">
+        <h2>Test Residential Street View</h2>
+        <form id="streetViewForm">
+            <div class="form-group">
+                <label for="address">Address:</label>
+                <input type="text" id="address" placeholder="123 Main St, Denver, CO" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="size">Image Size:</label>
+                <select id="size">
+                    <option value="600x400">600x400 (Default)</option>
+                    <option value="800x600">800x600</option>
+                    <option value="640x640">640x640 (Square)</option>
+                    <option value="400x300">400x300 (Small)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="serviceType">Service Type:</label>
+                <select id="serviceType">
+                    <option value="home">Strict Residential (with building footprint)</option>
+                    <option value="flexible">Flexible (with fallback)</option>
+                    <option value="multi-angle">Multi-Angle View</option>
+                </select>
+            </div>
+            
+            <button type="submit" id="submitBtn">Get Street View</button>
+        </form>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001/api/streetview';
+        
+        document.getElementById('streetViewForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const address = document.getElementById('address').value;
+            const size = document.getElementById('size').value;
+            const serviceType = document.getElementById('serviceType').value;
+            const submitBtn = document.getElementById('submitBtn');
+            const resultDiv = document.getElementById('result');
+            
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Loading...';
+            resultDiv.innerHTML = '<div class="result">Loading Street View...</div>';
+            
+            try {
+                const params = new URLSearchParams({
+                    address: address,
+                    size: size
+                });
+                
+                const response = await fetch(`${API_BASE}/${serviceType}?${params}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayResult(data.data, serviceType);
+                } else {
+                    displayError(data.error || 'Unknown error occurred', data.message);
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                displayError('Network Error', 'Failed to connect to the Street View service. Make sure the backend is running on port 3001.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Get Street View';
+            }
+        });
+        
+        function displayResult(data, serviceType) {
+            const resultDiv = document.getElementById('result');
+            
+            if (serviceType === 'multi-angle') {
+                let html = '<div class="result success">';
+                html += `<h3>Multi-Angle Street View Results</h3>`;
+                html += `<p><strong>Address:</strong> ${data.address}</p>`;
+                html += `<p><strong>Coordinates:</strong> ${data.coordinates.lat}, ${data.coordinates.lng}</p>`;
+                html += '<div class="multi-angle">';
+                
+                data.images.forEach(img => {
+                    html += `
+                        <div class="angle-image">
+                            <h4>${img.angle}°</h4>
+                            <img src="${img.url}" alt="Street View at ${img.angle} degrees" />
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+                resultDiv.innerHTML = html;
+            } else {
+                let html = '<div class="result success">';
+                html += `<h3>Street View Result</h3>`;
+                html += '<div class="image-container">';
+                html += `<img src="${data.url}" alt="Street View" class="streetview-image" />`;
+                html += '</div>';
+                
+                html += '<div class="metadata">';
+                html += `<strong>Address:</strong> ${data.metadata.address}<br>`;
+                html += `<strong>Coordinates:</strong> ${data.metadata.coordinates.lat}, ${data.metadata.coordinates.lng}<br>`;
+                html += `<strong>Building Found:</strong> ${data.metadata.buildingFound ? 'Yes' : 'No'}<br>`;
+                
+                if (data.metadata.isResidential !== undefined) {
+                    html += `<strong>Residential Area:</strong> ${data.metadata.isResidential ? 'Yes' : 'No'}<br>`;
+                }
+                
+                if (data.metadata.bearing !== undefined) {
+                    html += `<strong>Calculated Bearing:</strong> ${data.metadata.bearing.toFixed(1)}°<br>`;
+                }
+                
+                if (data.metadata.fallbackUsed !== undefined) {
+                    html += `<strong>Fallback Used:</strong> ${data.metadata.fallbackUsed ? 'Yes' : 'No'}<br>`;
+                }
+                
+                html += '</div></div>';
+                resultDiv.innerHTML = html;
+            }
+        }
+        
+        function displayError(error, message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `
+                <div class="result error">
+                    <h3>Error: ${error}</h3>
+                    <p>${message || 'Please try again with a different address.'}</p>
+                </div>
+            `;
+        }
+        
+        // Add some example addresses for testing
+        const examples = [
+            '1600 Pennsylvania Avenue NW, Washington, DC',
+            '123 Main Street, Denver, CO',
+            '456 Oak Avenue, Portland, OR',
+            '789 Pine Street, Seattle, WA'
+        ];
+        
+        // Add example buttons
+        window.addEventListener('load', () => {
+            const form = document.getElementById('streetViewForm');
+            const exampleDiv = document.createElement('div');
+            exampleDiv.innerHTML = '<h3>Example Addresses:</h3>';
+            
+            examples.forEach(addr => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = addr;
+                btn.style.marginRight = '10px';
+                btn.style.marginBottom = '5px';
+                btn.style.width = 'auto';
+                btn.style.padding = '5px 10px';
+                btn.style.fontSize = '12px';
+                btn.addEventListener('click', () => {
+                    document.getElementById('address').value = addr;
+                });
+                exampleDiv.appendChild(btn);
+            });
+            
+            form.appendChild(exampleDiv);
+        });
+    </script>
+</body>
+</html>

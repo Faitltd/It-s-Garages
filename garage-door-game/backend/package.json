@@ -27,7 +27,9 @@
   "license": "MIT",
   "type": "commonjs",
   "dependencies": {
+    "@turf/turf": "^7.2.0",
     "@types/cookie-parser": "^1.4.9",
+    "axios": "^1.11.0",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -54,6 +56,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^24.1.0",
     "@types/supertest": "^6.0.3",
+    "@types/turf": "^3.5.32",
     "cypress": "^14.5.3",
     "jest": "^30.0.5",
     "nodemon": "^3.1.10",
