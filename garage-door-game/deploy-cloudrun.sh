@@ -52,9 +52,8 @@ cd ..
 echo "🎨 Deploying frontend service..."
 cd frontend
 
-# Build with correct API URL using Cloud Build substitutions
-gcloud builds submit --tag gcr.io/$PROJECT_ID/$FRONTEND_SERVICE \
-  --substitutions _API_BASE_URL=$BACKEND_URL/api
+# Build and deploy frontend (API URL is hardcoded in config.ts)
+gcloud builds submit --tag gcr.io/$PROJECT_ID/$FRONTEND_SERVICE
 
 gcloud run deploy $FRONTEND_SERVICE \
   --image gcr.io/$PROJECT_ID/$FRONTEND_SERVICE \
