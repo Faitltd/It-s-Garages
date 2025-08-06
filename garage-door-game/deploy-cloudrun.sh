@@ -52,10 +52,10 @@ cd ..
 echo "🎨 Deploying frontend service..."
 cd frontend
 
-# Update the API base URL in the frontend build
-export VITE_API_BASE_URL=$BACKEND_URL/api
+# Build with correct API URL using Cloud Build substitutions
+gcloud builds submit --tag gcr.io/$PROJECT_ID/$FRONTEND_SERVICE \
+  --substitutions _API_BASE_URL=$BACKEND_URL/api
 
-gcloud builds submit --tag gcr.io/$PROJECT_ID/$FRONTEND_SERVICE
 gcloud run deploy $FRONTEND_SERVICE \
   --image gcr.io/$PROJECT_ID/$FRONTEND_SERVICE \
   --platform managed \
@@ -64,8 +64,7 @@ gcloud run deploy $FRONTEND_SERVICE \
   --port 8080 \
   --memory 512Mi \
   --cpu 1 \
-  --set-env-vars NODE_ENV=production \
-  --set-env-vars VITE_API_BASE_URL=$BACKEND_URL/api
+  --set-env-vars NODE_ENV=production
 
 # Get frontend URL
 FRONTEND_URL=$(gcloud run services describe $FRONTEND_SERVICE --platform managed --region $REGION --format 'value(status.url)')
