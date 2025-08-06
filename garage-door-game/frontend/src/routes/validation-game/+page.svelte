@@ -34,11 +34,16 @@
   async function apiCall(endpoint: string, options: RequestInit = {}) {
     const auth = get(authStore);
     if (!auth.token) {
+      console.log('No auth token, redirecting to login');
       goto('/login');
       return null;
     }
 
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const url = `${API_BASE}${endpoint}`;
+    console.log('Making API call to:', url);
+    console.log('With options:', options);
+
+    const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -47,8 +52,12 @@
       }
     });
 
+    console.log('API response status:', response.status);
+    console.log('API response headers:', Object.fromEntries(response.headers.entries()));
+
     if (response.status === 401) {
       // Clear auth and redirect to login
+      console.log('401 Unauthorized, clearing auth and redirecting');
       authStore.logout();
       goto('/login');
       return null;
@@ -139,20 +148,30 @@
         });
       }
 
+      console.log('Submitting guess with payload:', payload);
+
       const response = await apiCall('/validation-game/guess', {
         method: 'POST',
         body: JSON.stringify(payload)
       });
 
-      if (!response) return;
+      console.log('Response received:', response);
+
+      if (!response) {
+        console.log('No response received from apiCall');
+        return;
+      }
 
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (data.success) {
         gameResult = data.data;
         gameState = 'question-result';
+        console.log('Successfully submitted guess, moving to result state');
       } else {
         message = data.error?.message || 'Failed to submit guess';
+        console.error('Backend returned error:', data.error);
       }
     } catch (error) {
       console.error('Submit guess error:', error);
