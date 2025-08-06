@@ -57,6 +57,13 @@
         }
       });
 
+      if (response.status === 401) {
+        message = 'Please log in to play the validation game';
+        // Optionally redirect to login
+        // goto('/login');
+        return;
+      }
+
       const data = await response.json();
 
       if (data.success) {
