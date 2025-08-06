@@ -61,8 +61,14 @@ export const createApp = () => {
   }));
 
   // CORS configuration
+  const allowedOrigins = [
+    'http://localhost:5173', // Development
+    'https://itsgarages.itsfait.com', // Production
+    'https://garage-door-frontend-341270520862.us-central1.run.app' // Cloud Run frontend
+  ];
+
   app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: process.env.CORS_ORIGIN || allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization']
