@@ -129,7 +129,7 @@ class GoogleApiService {
       const directionsUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${lat},${lng}&destination=${lat2},${lng}&key=${this.getMapsApiKey()}`;
 
       const response = await fetch(directionsUrl);
-      const data = await response.json();
+      const data = await response.json() as any; // Type assertion for Google Directions API response
 
       if (data.routes && data.routes.length > 0 && data.routes[0].legs && data.routes[0].legs.length > 0) {
         const steps = data.routes[0].legs[0].steps;
