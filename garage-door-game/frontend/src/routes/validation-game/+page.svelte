@@ -131,6 +131,9 @@
     loading = true;
 
     try {
+      console.log('submitGuess called with:', { skip, notVisible });
+      console.log('Form values:', { garage_door_count, garage_door_width, garage_door_height, garage_door_type, confidence });
+
       const payload = {
         sessionId,
         skipped: skip,
@@ -146,9 +149,12 @@
           garage_door_type,
           confidence
         });
+        console.log('Added garage door data to payload');
+      } else {
+        console.log('Skipping garage door data because skip =', skip, 'notVisible =', notVisible);
       }
 
-      console.log('Submitting guess with payload:', payload);
+      console.log('Final payload being sent:', payload);
 
       const response = await apiCall('/validation-game/guess', {
         method: 'POST',
@@ -158,7 +164,8 @@
       console.log('Response received:', response);
 
       if (!response) {
-        console.log('No response received from apiCall');
+        console.log('No response received from apiCall - likely authentication issue');
+        message = 'Authentication error. Please refresh and try again.';
         return;
       }
 
@@ -172,10 +179,18 @@
       } else {
         message = data.error?.message || 'Failed to submit guess';
         console.error('Backend returned error:', data.error);
+        // If there's an error, restart the timer to prevent freezing
+        if (gameState === 'playing') {
+          startTimer();
+        }
       }
     } catch (error) {
       console.error('Submit guess error:', error);
       message = 'Network error. Please try again.';
+      // If there's an error, restart the timer to prevent freezing
+      if (gameState === 'playing') {
+        startTimer();
+      }
     } finally {
       loading = false;
     }
@@ -358,7 +373,7 @@
             <div>
               <h3 class="text-sm font-bold text-gray-300 mb-3">YOUR GUESS:</h3>
 
-              <form on:submit|preventDefault={submitGuess} class="space-y-3">
+              <form on:submit|preventDefault={() => submitGuess()} class="space-y-3">
                 <!-- Door Count -->
                 <div>
                   <label class="block text-xs font-bold text-gray-400 mb-1">

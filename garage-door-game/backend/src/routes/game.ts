@@ -82,13 +82,13 @@ router.post('/start',
       }
 
       // Build Street View URL optimized for residential garage door viewing
-      const streetViewUrl = googleApiService.buildStreetViewUrl({
+      const streetViewUrl = await googleApiService.buildOptimalStreetViewUrl({
         lat: gameLocation.lat,
         lng: gameLocation.lng,
         size: '640x640',
-        heading: Math.floor(Math.random() * 360), // Random heading to show different house angles
-        pitch: -10, // Slightly downward angle to better capture garage doors
-        fov: 90 // Standard field of view for house viewing
+        pitch: 10, // Slightly upward to capture house fronts and garage doors
+        fov: 90, // Standard field of view for house viewing
+        preferredSide: Math.random() > 0.5 ? 'right' : 'left' // Randomize side for variety
       });
 
       // Create game session in database

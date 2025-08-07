@@ -206,14 +206,14 @@ router.post('/submit',
         if (geocodeResult) {
           coordinates = geocodeResult;
           
-          // Get Street View image using coordinates for better accuracy
-          streetViewUrl = googleApiService.buildStreetViewUrl({
+          // Get Street View image using coordinates with optimal heading for garage doors
+          streetViewUrl = await googleApiService.buildOptimalStreetViewUrl({
             lat: coordinates.lat,
             lng: coordinates.lng,
             size: '640x640',
-            heading: 0, // Face north initially
-            pitch: -10, // Slightly downward to capture garage doors
-            fov: 90
+            pitch: 10, // Slightly upward to capture house fronts and garage doors
+            fov: 90,
+            preferredSide: 'right' // Try right side of street first for better garage visibility
           });
         }
       } catch (error) {

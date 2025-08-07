@@ -207,15 +207,15 @@ export const getCentennialAddressWithStreetView = async (addressId?: number): Pr
       return null;
     }
 
-    // Generate Street View URL
+    // Generate Street View URL with optimal heading for garage door viewing
     const googleService = new GoogleApiService();
-    const streetViewUrl = googleService.buildStreetViewUrl({
+    const streetViewUrl = await googleService.buildOptimalStreetViewUrl({
       lat: address.latitude,
       lng: address.longitude,
       size: '640x640',
-      heading: Math.floor(Math.random() * 360), // Random heading
-      pitch: -10,
-      fov: 90
+      pitch: 10, // Slightly upward to capture house fronts and garage doors
+      fov: 90,
+      preferredSide: 'right' // Try right side of street first
     });
 
     // Update the address with the Street View URL if not already set

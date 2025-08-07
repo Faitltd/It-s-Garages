@@ -113,7 +113,77 @@ class GoogleApiService {
   }
 
   /**
-   * Build Street View URL with proper parameters
+   * Calculate optimal heading for residential garage door viewing
+   * @param lat Latitude
+   * @param lng Longitude
+   * @param preferredSide 'right' or 'left' side of street (default: 'right')
+   * @returns Promise<number> Calculated heading in degrees
+   */
+  public async calculateOptimalHeading(lat: number, lng: number, preferredSide: 'right' | 'left' = 'right'): Promise<number> {
+    try {
+      // Create a small offset to get street bearing
+      const offsetDistance = 0.001; // ~100 meters
+      const lat2 = lat + offsetDistance;
+
+      // Use Directions API to get street bearing
+      const directionsUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${lat},${lng}&destination=${lat2},${lng}&key=${this.getMapsApiKey()}`;
+
+      const response = await fetch(directionsUrl);
+      const data = await response.json();
+
+      if (data.routes && data.routes.length > 0 && data.routes[0].legs && data.routes[0].legs.length > 0) {
+        const steps = data.routes[0].legs[0].steps;
+        if (steps && steps.length > 0) {
+          // Get the bearing from the first step
+          const startLocation = steps[0].start_location;
+          const endLocation = steps[0].end_location;
+
+          // Calculate bearing between two points
+          const streetBearing = this.calculateBearing(
+            startLocation.lat, startLocation.lng,
+            endLocation.lat, endLocation.lng
+          );
+
+          // Add 90 degrees for right side houses, 270 for left side
+          const headingOffset = preferredSide === 'right' ? 90 : 270;
+          return (streetBearing + headingOffset) % 360;
+        }
+      }
+
+      // Fallback: try multiple common residential orientations
+      const fallbackHeadings = [45, 135, 225, 315]; // NE, SE, SW, NW
+      const randomIndex = Math.floor(Math.random() * fallbackHeadings.length);
+      return fallbackHeadings[randomIndex] || 45; // Default to 45 if somehow undefined
+
+    } catch (error) {
+      console.warn('Could not calculate optimal heading, using fallback:', error);
+      // Fallback to a reasonable residential heading
+      return preferredSide === 'right' ? 45 : 315;
+    }
+  }
+
+  /**
+   * Calculate bearing between two geographic points
+   * @param lat1 Start latitude
+   * @param lng1 Start longitude
+   * @param lat2 End latitude
+   * @param lng2 End longitude
+   * @returns Bearing in degrees (0-360)
+   */
+  private calculateBearing(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const lat1Rad = lat1 * Math.PI / 180;
+    const lat2Rad = lat2 * Math.PI / 180;
+
+    const y = Math.sin(dLng) * Math.cos(lat2Rad);
+    const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng);
+
+    const bearing = Math.atan2(y, x) * 180 / Math.PI;
+    return (bearing + 360) % 360;
+  }
+
+  /**
+   * Build Street View URL with proper parameters and optional automatic heading calculation
    */
   public buildStreetViewUrl(params: {
     location?: string;
@@ -123,6 +193,8 @@ class GoogleApiService {
     heading?: number;
     pitch?: number;
     fov?: number;
+    autoHeading?: boolean;
+    preferredSide?: 'right' | 'left';
   }): string {
     const apiKey = this.getStreetViewApiKey();
 
@@ -162,6 +234,52 @@ class GoogleApiService {
     }
 
     return `${baseUrl}?${urlParams.toString()}`;
+  }
+
+  /**
+   * Build Street View URL with automatic optimal heading calculation
+   * This async version calculates the best heading to face residential buildings
+   */
+  public async buildOptimalStreetViewUrl(params: {
+    location?: string;
+    lat?: number;
+    lng?: number;
+    size?: string;
+    heading?: number;
+    pitch?: number;
+    fov?: number;
+    preferredSide?: 'right' | 'left';
+  }): Promise<string> {
+    // If heading is already provided, use the synchronous version
+    if (params.heading !== undefined) {
+      return this.buildStreetViewUrl(params);
+    }
+
+    // Calculate optimal heading if coordinates are available
+    if (params.lat && params.lng) {
+      try {
+        const optimalHeading = await this.calculateOptimalHeading(
+          params.lat,
+          params.lng,
+          params.preferredSide || 'right'
+        );
+
+        return this.buildStreetViewUrl({
+          ...params,
+          heading: optimalHeading
+        });
+      } catch (error) {
+        console.warn('Failed to calculate optimal heading, using default:', error);
+        // Fallback to default residential heading
+        return this.buildStreetViewUrl({
+          ...params,
+          heading: 45 // Default NE facing for residential areas
+        });
+      }
+    }
+
+    // Fallback to synchronous version
+    return this.buildStreetViewUrl(params);
   }
 
   /**

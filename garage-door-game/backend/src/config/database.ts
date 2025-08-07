@@ -2,7 +2,16 @@ import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const DATABASE_PATH = process.env.DATABASE_PATH || './database/garage_game.db';
+// Handle both DATABASE_PATH and DATABASE_URL environment variables
+const getDatabasePath = () => {
+  if (process.env.DATABASE_URL) {
+    // Handle DATABASE_URL format like "sqlite:./garage_game.db"
+    return process.env.DATABASE_URL.replace('sqlite:', '');
+  }
+  return process.env.DATABASE_PATH || './database/garage_game.db';
+};
+
+const DATABASE_PATH = getDatabasePath();
 
 // Ensure database directory exists
 const dbDir = path.dirname(DATABASE_PATH);

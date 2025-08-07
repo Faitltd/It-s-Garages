@@ -68,11 +68,37 @@ export const createApp = () => {
   ];
 
   app.use(cors({
-    origin: process.env.CORS_ORIGIN || allowedOrigins,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      // Check if the origin is in our allowed list
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // If CORS_ORIGIN is set, use it as a fallback
+      if (process.env.CORS_ORIGIN && origin === process.env.CORS_ORIGIN) {
+        return callback(null, true);
+      }
+
+      return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   }));
+
+  // Cache-busting headers for all API requests to prevent browser caching issues
+  app.use((req, res, next) => {
+    // Add cache-busting headers for all API responses
+    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.header('Pragma', 'no-cache');
+    res.header('Expires', '0');
+    next();
+  });
 
   // Rate limiting disabled for Cloud Run compatibility
   // TODO: Implement proper rate limiting with Cloud Run proxy support
@@ -100,6 +126,22 @@ export const createApp = () => {
 
   // Serve static files (uploaded images)
   app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+  // Root endpoint
+  app.get('/', (req, res) => {
+    res.status(200).json({
+      name: 'Garage Door Game API',
+      status: 'running',
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      endpoints: {
+        health: '/health',
+        api: '/api',
+        validationGame: '/api/validation-game'
+      }
+    });
+  });
 
   // Health check endpoint
   app.get('/health', (req, res) => {
@@ -159,21 +201,22 @@ export const createApp = () => {
   });
 
   // Test endpoint for Street View URL generation
-  app.get('/api/test/streetview', (req, res) => {
+  app.get('/api/test/streetview', async (req, res) => {
     try {
-      const { googleApiService } = require('./services/googleApiService');
+      const { GoogleApiService } = require('./services/googleApiService');
+      const googleApiService = new GoogleApiService();
 
       // Test coordinates (Residential address in San Francisco)
       const testLat = 37.7749;
       const testLng = -122.4194;
 
-      const streetViewUrl = googleApiService.buildStreetViewUrl({
+      const streetViewUrl = await googleApiService.buildOptimalStreetViewUrl({
         lat: testLat,
         lng: testLng,
         size: '640x640',
-        heading: 45, // Angled view to better show house and garage
-        pitch: -10, // Slightly downward to capture garage doors
-        fov: 90
+        pitch: 10, // Slightly upward to capture house fronts and garage doors
+        fov: 90,
+        preferredSide: 'right' // Default to right side for testing
       });
 
       res.json({
