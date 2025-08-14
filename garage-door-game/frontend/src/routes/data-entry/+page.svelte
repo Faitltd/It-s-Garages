@@ -156,6 +156,35 @@
     { value: 'other', label: 'Other' }
   ];
 
+  // Common door sizes for quick selection
+  const doorSizeOptions = [
+    { value: '8x7', width: 8, height: 7, label: "8' × 7' (Single Standard)" },
+    { value: '9x7', width: 9, height: 7, label: "9' × 7' (Single Wide)" },
+    { value: '16x7', width: 16, height: 7, label: "16' × 7' (Double Standard)" },
+    { value: '18x7', width: 18, height: 7, label: "18' × 7' (Double Wide)" },
+    { value: '8x8', width: 8, height: 8, label: "8' × 8' (Single Tall)" },
+    { value: '16x8', width: 16, height: 8, label: "16' × 8' (Double Tall)" },
+    { value: 'custom', width: 0, height: 0, label: 'Custom Size' }
+  ];
+
+  let customSizeMode = false;
+  function computeIsCustom() {
+    return !doorSizeOptions.some((opt) => opt.value !== 'custom' && opt.width === garage_door_width && opt.height === garage_door_height);
+  }
+  // Initialize custom mode based on defaults
+  customSizeMode = computeIsCustom();
+
+  function selectDoorSize(option: { value: string; width: number; height: number }) {
+    if (option.value === 'custom') {
+      customSizeMode = true;
+      return;
+    }
+    garage_door_width = option.width;
+    garage_door_height = option.height;
+    customSizeMode = false;
+  }
+
+
   async function submitData() {
     if (!address.trim()) {
       showMessage('Please enter an address', 'error');
@@ -306,100 +335,133 @@
 
         <!-- Door Count -->
         <div>
-          <label for="door_count" class="block text-sm font-medium text-gray-700 mb-2">
+          <p class="block text-sm font-medium text-gray-700 mb-2">
             Number of Garage Doors *
-          </label>
-          <select
-            id="door_count"
-            bind:value={garage_door_count}
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
+          </p>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {#each Array(10) as _, i}
-              <option value={i + 1}>{i + 1} door{i > 0 ? 's' : ''}</option>
+              <button
+                type="button"
+                class="choice-option {garage_door_count === i + 1 ? 'selected' : ''}"
+                on:click={() => (garage_door_count = i + 1)}
+                aria-pressed={garage_door_count === i + 1}
+              >
+                {i + 1} door{i > 0 ? 's' : ''}
+              </button>
             {/each}
-          </select>
+          </div>
         </div>
 
-        <!-- Door Dimensions -->
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label for="door_width" class="block text-sm font-medium text-gray-700 mb-2">
-              Door Width (feet) *
-            </label>
-            <input
-              type="number"
-              id="door_width"
-              bind:value={garage_door_width}
-              min="4"
-              max="20"
-              step="0.5"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+        <!-- Door Size -->
+        <div>
+          <p class="block text-sm font-medium text-gray-700 mb-2">
+            Door Size
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+            {#each doorSizeOptions as option}
+              <button
+                type="button"
+                class="choice-option {(!customSizeMode && option.value !== 'custom' && garage_door_width === option.width && garage_door_height === option.height) || (customSizeMode && option.value === 'custom') ? 'selected' : ''}"
+                on:click={() => selectDoorSize(option)}
+                aria-pressed={(!customSizeMode && option.value !== 'custom' && garage_door_width === option.width && garage_door_height === option.height) || (customSizeMode && option.value === 'custom')}
+              >
+                {option.label}
+              </button>
+            {/each}
           </div>
-          <div>
-            <label for="door_height" class="block text-sm font-medium text-gray-700 mb-2">
-              Door Height (feet) *
-            </label>
-            <input
-              type="number"
-              id="door_height"
-              bind:value={garage_door_height}
-              min="6"
-              max="12"
-              step="0.5"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+
+          {#if customSizeMode}
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="door_width" class="block text-sm font-medium text-gray-700 mb-2">
+                  Door Width (feet) *
+                </label>
+                <input
+                  type="number"
+                  id="door_width"
+                  bind:value={garage_door_width}
+                  min="4"
+                  max="20"
+                  step="0.5"
+                  required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label for="door_height" class="block text-sm font-medium text-gray-700 mb-2">
+                  Door Height (feet) *
+                </label>
+                <input
+                  type="number"
+                  id="door_height"
+                  bind:value={garage_door_height}
+                  min="6"
+                  max="12"
+                  step="0.5"
+                  required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          {/if}
         </div>
 
         <!-- Door Type -->
         <div>
-          <label for="door_type" class="block text-sm font-medium text-gray-700 mb-2">
+          <p class="block text-sm font-medium text-gray-700 mb-2">
             Door Type *
-          </label>
-          <select
-            id="door_type"
-            bind:value={garage_door_type}
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {#each doorTypes as type}
-              <option value={type.value}>{type.label}</option>
+              <button
+                type="button"
+                class="choice-option {garage_door_type === type.value ? 'selected' : ''}"
+                on:click={() => (garage_door_type = type.value)}
+                aria-pressed={garage_door_type === type.value}
+              >
+                {type.label}
+              </button>
             {/each}
-          </select>
+          </div>
         </div>
 
         <!-- Door Material -->
         <div>
-          <label for="door_material" class="block text-sm font-medium text-gray-700 mb-2">
+          <p class="block text-sm font-medium text-gray-700 mb-2">
             Door Material
-          </label>
-          <select
-            id="door_material"
-            bind:value={garage_door_material}
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {#each materials as material}
-              <option value={material.value}>{material.label}</option>
+              <button
+                type="button"
+                class="choice-option {garage_door_material === material.value ? 'selected' : ''}"
+                on:click={() => (garage_door_material = material.value)}
+                aria-pressed={garage_door_material === material.value}
+              >
+                {material.label}
+              </button>
             {/each}
-          </select>
+          </div>
         </div>
 
         <!-- Confidence Level -->
         <div>
-          <label for="confidence" class="block text-sm font-medium text-gray-700 mb-2">
+          <p class="block text-sm font-medium text-gray-700 mb-2">
             Confidence Level: {confidence_level}/5
-          </label>
-          <input
-            type="range"
-            id="confidence"
-            bind:value={confidence_level}
-            min="1"
-            max="5"
-            class="w-full"
-          />
-          <div class="flex justify-between text-sm text-gray-500 mt-1">
+          </p>
+          <div class="grid grid-cols-5 gap-2">
+            {#each [1, 2, 3, 4, 5] as lvl}
+              <button
+                type="button"
+                class="choice-option {confidence_level === lvl ? 'selected' : ''}"
+                on:click={() => (confidence_level = lvl)}
+                aria-pressed={confidence_level === lvl}
+              >
+                {lvl}
+              </button>
+            {/each}
+          </div>
+          <div class="flex justify-between text-xs text-gray-500 mt-2">
             <span>Not sure</span>
             <span>Very confident</span>
           </div>
@@ -428,7 +490,7 @@
           >
             Play Validation Game →
           </button>
-          
+
           <button
             type="submit"
             disabled={loading}
@@ -453,32 +515,4 @@
   </div>
 </div>
 
-<style>
-  input[type="range"] {
-    -webkit-appearance: none;
-    appearance: none;
-    height: 6px;
-    background: #e5e7eb;
-    border-radius: 3px;
-    outline: none;
-  }
 
-  input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 20px;
-    height: 20px;
-    background: #3b82f6;
-    border-radius: 50%;
-    cursor: pointer;
-  }
-
-  input[type="range"]::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    background: #3b82f6;
-    border-radius: 50%;
-    cursor: pointer;
-    border: none;
-  }
-</style>
