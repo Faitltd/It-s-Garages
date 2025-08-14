@@ -71,3 +71,8 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+
+# Do not ignore frontend src/lib directory (contains config)
+!garage-door-game/frontend/src/lib/
+!garage-door-game/frontend/src/lib/**

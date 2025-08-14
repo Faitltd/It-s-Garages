@@ -3,6 +3,8 @@
   import { goto } from '$app/navigation';
   import { authStore } from '$lib/stores/auth';
   import { get } from 'svelte/store';
+  import { getApiBase } from '$lib/config';
+  const API_BASE = getApiBase();
 
   let address = '';
   let garage_door_count = 1;
@@ -51,7 +53,7 @@
 
       // Reverse geocode using Google Maps API
       const auth = get(authStore);
-      const response = await fetch('/api/data-entry/reverse-geocode', {
+      const response = await fetch(`${API_BASE}/data-entry/reverse-geocode`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -97,7 +99,7 @@
 
     try {
       const auth = get(authStore);
-      const response = await fetch('/api/data-entry/centennial-address', {
+      const response = await fetch(`${API_BASE}/data-entry/centennial-address`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${auth.token}`
@@ -196,7 +198,7 @@
 
     try {
       const auth = get(authStore);
-      const response = await fetch('/api/data-entry/submit', {
+      const response = await fetch(`${API_BASE}/data-entry/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
