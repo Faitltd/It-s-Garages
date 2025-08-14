@@ -123,6 +123,35 @@ jobs:
           --max-instances 5 \
           --set-env-vars NODE_ENV=production
 
+    - name: Ensure Custom Domain Mapping
+      env:
+        DOMAIN_NAME: itsgarages.itsfait.com
+      run: |
+        set -e
+        gcloud config set project $PROJECT_ID
+        echo "Checking existing domain mapping for $DOMAIN_NAME"
+        CURRENT_SERVICE=$(gcloud beta run domain-mappings describe --domain $DOMAIN_NAME --platform managed --region $REGION --format='value(spec.routeName)' || true)
+        if [ -z "$CURRENT_SERVICE" ]; then
+          echo "No existing mapping. Creating new mapping to $FRONTEND_SERVICE"
+          gcloud beta run domain-mappings create \
+            --domain $DOMAIN_NAME \
+            --service $FRONTEND_SERVICE \
+            --platform managed \
+            --region $REGION \
+            --certificate-mode=AUTOMATIC
+        elif [ "$CURRENT_SERVICE" != "$FRONTEND_SERVICE" ]; then
+          echo "Updating domain mapping from $CURRENT_SERVICE to $FRONTEND_SERVICE"
+          gcloud beta run domain-mappings update \
+            --domain $DOMAIN_NAME \
+            --service $FRONTEND_SERVICE \
+            --platform managed \
+            --region $REGION
+        else
+          echo "Domain mapping already points to $FRONTEND_SERVICE"
+        fi
+        echo "Domain mapping status:"
+        gcloud beta run domain-mappings describe --domain $DOMAIN_NAME --platform managed --region $REGION --format='yaml(status, spec)'
+
     - name: Show Deployment Results
       env:
         BACKEND_URL: ${{ needs.deploy-backend.outputs.backend-url }}
@@ -131,8 +160,4 @@ jobs:
         echo "🎉 Deployment complete!"
         echo "🔧 Backend API: $BACKEND_URL"
         echo "🎮 Frontend App: $FRONTEND_URL"
-        echo ""
-        echo "📝 Next steps:"
-        echo "1. Set up custom domain mapping for itsgarages.itsfait.com"
-        echo "2. Configure SSL certificate"
-        echo "3. Update DNS records"
+        echo "🌐 Custom Domain: https://itsgarages.itsfait.com"
