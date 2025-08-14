@@ -60,7 +60,8 @@ jobs:
           --cpu 1 \
           --max-instances 10 \
           --set-env-vars NODE_ENV=production \
-          --set-env-vars DATABASE_URL=sqlite:./garage_game.db \
+          --set-env-vars DATABASE_URL=sqlite:/tmp/garage_game.db \
+          --set-env-vars UPLOAD_PATH=/tmp/uploads \
           --set-env-vars JWT_SECRET=${{ secrets.JWT_SECRET }} \
           --set-env-vars GOOGLE_STREET_VIEW_API_KEY=${{ secrets.GOOGLE_STREET_VIEW_API_KEY }} \
           --set-env-vars GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }} \
