@@ -67,6 +67,34 @@ jobs:
           --set-env-vars GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }} \
           --set-env-vars CORS_ORIGIN=https://itsgarages.itsfait.com
 
+	    - name: Capture Backend Startup Logs on Failure
+	      if: failure()
+	      run: |
+	        set -e
+	        echo "Backend deploy failed. Fetching Cloud Run startup logs for diagnosis..."
+	        gcloud config set project $PROJECT_ID
+	        # Determine the latest created revision (likely the failing one)
+	        REV=$(gcloud run services describe $BACKEND_SERVICE --platform managed --region $REGION --format 'value(status.latestCreatedRevisionName)' || true)
+	        echo "Latest created revision: ${REV:-<unknown>}"
+	        if [ -z "$REV" ]; then
+	          echo "Could not determine latest created revision. Showing service status:"
+	          gcloud run services describe $BACKEND_SERVICE --platform managed --region $REGION --format 'yaml(status)'
+	          exit 0
+	        fi
+	        echo "----- Last 50 textPayload log lines for revision $REV -----"
+	        gcloud logging read \
+	          "resource.type=cloud_run_revision AND resource.labels.service_name=$BACKEND_SERVICE AND resource.labels.revision_name=$REV" \
+	          --project=$PROJECT_ID \
+	          --limit=50 \
+	          --format="table(timestamp, severity, textPayload)"
+	        echo "----- Last 50 jsonPayload.message log lines for revision $REV -----"
+	        gcloud logging read \
+	          "resource.type=cloud_run_revision AND resource.labels.service_name=$BACKEND_SERVICE AND resource.labels.revision_name=$REV" \
+	          --project=$PROJECT_ID \
+	          --limit=50 \
+	          --format="table(timestamp, severity, jsonPayload.message)"
+
+
     - name: Get Backend URL
       id: backend
       run: |
