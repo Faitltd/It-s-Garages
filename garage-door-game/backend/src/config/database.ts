@@ -2,35 +2,77 @@ import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
 
+// Test SQLite3 module loading
+console.log('🔄 Testing SQLite3 module...');
+try {
+  console.log('✅ SQLite3 version:', sqlite3.VERSION);
+  console.log('✅ SQLite3 module loaded successfully');
+} catch (error) {
+  console.error('❌ Failed to load SQLite3 module:', error);
+  throw error;
+}
+
 // Handle both DATABASE_PATH and DATABASE_URL environment variables
 const getDatabasePath = () => {
   if (process.env.DATABASE_URL) {
-    // Handle DATABASE_URL format like "sqlite:./garage_game.db"
-    return process.env.DATABASE_URL.replace('sqlite:', '');
+    // Handle DATABASE_URL format like "sqlite:/tmp/garage_game.db"
+    const dbPath = process.env.DATABASE_URL.replace('sqlite:', '');
+    console.log('🗄️ Using DATABASE_URL:', process.env.DATABASE_URL, '-> Path:', dbPath);
+    return dbPath;
   }
-  return process.env.DATABASE_PATH || './database/garage_game.db';
+  const defaultPath = process.env.DATABASE_PATH || './database/garage_game.db';
+  console.log('🗄️ Using default database path:', defaultPath);
+  return defaultPath;
 };
 
 const DATABASE_PATH = getDatabasePath();
+console.log('🗄️ Final database path:', DATABASE_PATH);
 
 // Ensure database directory exists
 const dbDir = path.dirname(DATABASE_PATH);
+console.log('🗄️ Database directory:', dbDir);
+console.log('🗄️ Directory exists:', fs.existsSync(dbDir));
+
 if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+  console.log('🗄️ Creating database directory:', dbDir);
+  try {
+    fs.mkdirSync(dbDir, { recursive: true });
+    console.log('✅ Database directory created successfully');
+  } catch (error) {
+    console.error('❌ Failed to create database directory:', error);
+    throw error;
+  }
+} else {
+  console.log('✅ Database directory already exists');
 }
 
 // Enable verbose mode in development
 const sqlite = process.env.NODE_ENV === 'development' ? sqlite3.verbose() : sqlite3;
 
-export const db = new sqlite.Database(DATABASE_PATH, (err) => {
+console.log('🔄 Attempting to connect to SQLite database...');
+console.log('🔄 SQLite3 module loaded successfully');
+
+export const db = new sqlite.Database(DATABASE_PATH, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
   if (err) {
     console.error('❌ Error opening database:', err.message);
     console.error('❌ Database path:', DATABASE_PATH);
     console.error('❌ Database directory exists:', fs.existsSync(dbDir));
+    console.error('❌ Database file exists:', fs.existsSync(DATABASE_PATH));
+    console.error('❌ Database directory permissions:', (() => {
+      try {
+        const stats = fs.statSync(dbDir);
+        return `mode: ${stats.mode.toString(8)}, uid: ${stats.uid}, gid: ${stats.gid}`;
+      } catch (e) {
+        return `Error getting stats: ${e}`;
+      }
+    })());
     console.error('❌ Full error:', err);
+    console.error('❌ Error code:', err.code);
+    console.error('❌ Error errno:', err.errno);
     process.exit(1);
   }
   console.log('✅ Connected to SQLite database at:', DATABASE_PATH);
+  console.log('✅ Database connection established successfully');
 });
 
 // Database schema initialization

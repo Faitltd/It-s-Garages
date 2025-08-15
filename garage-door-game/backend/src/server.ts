@@ -1,11 +1,20 @@
+console.log('🔄 Starting server initialization...');
+
 import dotenv from 'dotenv';
 
+console.log('🔄 Loading environment variables...');
 // Load environment variables
 dotenv.config();
+console.log('✅ Environment variables loaded');
 
+console.log('🔄 Importing database module...');
 // Import database and initialize
 import { initializeDatabase } from './config/database';
+console.log('✅ Database module imported');
+
+console.log('🔄 Importing app module...');
 import { createApp } from './app';
+console.log('✅ App module imported');
 
 const app = createApp();
 const PORT = process.env.PORT || 3001;
