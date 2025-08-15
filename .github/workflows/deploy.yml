@@ -123,8 +123,6 @@ jobs:
           "resource.type=cloud_run_revision AND resource.labels.service_name=garage-door-backend AND resource.labels.revision_name=$LATEST_REV AND severity>=ERROR" \
           --limit=200 \
           --format="json"
-
-
     - name: Get Backend URL
       id: backend
       run: |
