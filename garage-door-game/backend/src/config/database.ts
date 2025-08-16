@@ -103,12 +103,7 @@ export const initializeDatabase = (): Promise<void> => {
           username VARCHAR(50) UNIQUE NOT NULL,
           email VARCHAR(100) UNIQUE NOT NULL,
           password_hash VARCHAR(255) NOT NULL,
-          total_points INTEGER DEFAULT 0,
-          games_played INTEGER DEFAULT 0,
-          jobs_submitted INTEGER DEFAULT 0,
-          accuracy_rate REAL DEFAULT 0.0,
-          validation_games_played INTEGER DEFAULT 0,
-          validation_accuracy_rate REAL DEFAULT 0.0,
+          data_submissions_count INTEGER DEFAULT 0,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           is_active BOOLEAN DEFAULT 1,
@@ -396,76 +391,7 @@ export const initializeDatabase = (): Promise<void> => {
         END
       `);
 
-      // Game Questions Table - Multiple choice questions generated from job data
-      db.run(`
-        CREATE TABLE IF NOT EXISTS game_questions (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          address TEXT NOT NULL,
-          image_url TEXT NOT NULL,
-          correct_answer TEXT NOT NULL,
-          option_a TEXT NOT NULL,
-          option_b TEXT NOT NULL,
-          option_c TEXT NOT NULL,
-          option_d TEXT NOT NULL,
-          difficulty TEXT DEFAULT 'medium' CHECK (difficulty IN ('easy', 'medium', 'hard')),
-          points_value INTEGER DEFAULT 20,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          is_active BOOLEAN DEFAULT 1
-        )
-      `);
 
-      // Question Game Results - Track user performance on questions
-      db.run(`
-        CREATE TABLE IF NOT EXISTS question_game_results (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          question_id INTEGER NOT NULL,
-          selected_answer TEXT NOT NULL,
-          correct_answer TEXT NOT NULL,
-          is_correct BOOLEAN NOT NULL,
-          points_earned INTEGER DEFAULT 0,
-          time_taken REAL,
-          difficulty TEXT NOT NULL,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-          FOREIGN KEY (user_id) REFERENCES users (id),
-          FOREIGN KEY (question_id) REFERENCES game_questions (id)
-        )
-      `);
-
-      // User Achievements Table - Track milestones and badges
-      db.run(`
-        CREATE TABLE IF NOT EXISTS user_achievements (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          achievement_type TEXT NOT NULL, -- 'streak', 'accuracy', 'points', 'games_played'
-          achievement_name TEXT NOT NULL,
-          description TEXT,
-          points_awarded INTEGER DEFAULT 0,
-          earned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-          FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-      `);
-
-      // Leaderboard View - Virtual table for rankings
-      db.run(`
-        CREATE VIEW IF NOT EXISTS leaderboard AS
-        SELECT
-          u.id,
-          u.username,
-          u.total_points,
-          u.games_played,
-          u.accuracy_rate,
-          RANK() OVER (ORDER BY u.total_points DESC) as rank,
-          COUNT(qgr.id) as questions_answered,
-          AVG(CASE WHEN qgr.is_correct THEN 1.0 ELSE 0.0 END) as question_accuracy
-        FROM users u
-        LEFT JOIN question_game_results qgr ON u.id = qgr.user_id
-        WHERE u.total_points > 0
-        GROUP BY u.id, u.username, u.total_points, u.games_played, u.accuracy_rate
-        ORDER BY u.total_points DESC
-      `);
 
       // Garage Door Data Entries - Main data collection table for ML training
       db.run(`
