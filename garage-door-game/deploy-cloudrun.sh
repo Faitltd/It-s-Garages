@@ -63,7 +63,7 @@ gcloud run deploy $FRONTEND_SERVICE \
   --port 8080 \
   --memory 512Mi \
   --cpu 1 \
-  --set-env-vars NODE_ENV=production
+  --set-env-vars NODE_ENV=production,GOOGLE_PLACES_API_KEY=$GOOGLE_PLACES_API_KEY
 
 # Get frontend URL
 FRONTEND_URL=$(gcloud run services describe $FRONTEND_SERVICE --platform managed --region $REGION --format 'value(status.url)')

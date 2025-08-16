@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Garage Door Data Entry</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Press Start 2P', monospace; margin: 0; padding: 16px; }
+    .container { max-width: 520px; margin: 0 auto; }
+    .status { padding: 10px; margin-bottom: 10px; font-size: 12px; }
+    .status.error { background: #f8d7da; color: #721c24; border: 2px solid #f5c6cb; }
+    .status.success { background: #d4edda; color: #155724; border: 2px solid #c3e6cb; }
+    .box { background: #228B22; color: #fff; border: 4px solid #fff; box-shadow: 4px 4px 0 #000; padding: 16px; margin: 12px 0; }
+    .input { width: 100%; padding: 16px; border: 4px solid #000; box-shadow: inset -2px -2px 0 #666, inset 2px 2px 0 #fff, 2px 2px 0 #000; }
+    .btn { width: 100%; padding: 16px; background: #ff6b6b; color: #fff; border: none; box-shadow: 4px 4px 0 #000; cursor: pointer; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .choice { padding: 12px; border: 4px solid #000; background: #fff; cursor: pointer; box-shadow: 3px 3px 0 #000; text-align: center; }
+    .choice.selected { background: #4caf50; color: #fff; }
+    .hidden { display: none; }
+    .remove { background: #cc0000; color: #fff; border: none; padding: 8px 12px; cursor: pointer; }
+  </style>
+  <script src="/env.js"></script>
+  <script>
+    let placeAutocomplete = null;
+    let doors = []; let doorIdSeq = 0;
+
+    function status(msg, ok) {
+      const el = document.getElementById('status');
+      el.textContent = msg; el.className = 'status ' + (ok ? 'success' : 'error'); el.style.display = 'block';
+      if (ok) setTimeout(()=> el.style.display='none', 2000);
+    }
+
+    function initAddress() {
+      const apiKey = window.__ENV && window.__ENV.GOOGLE_PLACES_API_KEY;
+      const container = document.getElementById('addressContainer');
+      if (!apiKey) { renderFallback(container); status('Manual address entry (no API key configured)', false); return; }
+      const s = document.createElement('script');
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&loading=async&callback=initGooglePlaces`;
+      s.async = true; s.defer = true; s.onerror = () => { renderFallback(container); status('Failed to load Google Places. Using manual entry.', false); };
+      window.initGooglePlaces = () => {
+        try {
+          if (google.maps?.places?.PlaceAutocompleteElement) {
+            const el = new google.maps.places.PlaceAutocompleteElement({ types: ['address'], componentRestrictions: { country: 'us' }, fields: ['formatted_address','name','place_id'] });
+            el.setAttribute('placeholder', 'Start typing address...');
+            container.innerHTML = ''; container.appendChild(el); placeAutocomplete = el;
+            el.addEventListener('gmp-placeselect', (e)=> status('Address selected', true));
+            status('Address autocomplete ready', true);
+          } else if (google.maps?.places?.Autocomplete) {
+            const input = document.createElement('input'); input.className='input'; input.id='address'; input.placeholder='Start typing address...';
+            container.innerHTML=''; container.appendChild(input);
+            const ac = new google.maps.places.Autocomplete(input, { types:['address'], componentRestrictions:{ country:'us' }, fields:['formatted_address','name'] });
+            ac.addListener('place_changed', ()=> status('Address selected', true));
+            status('Address autocomplete ready (legacy)', true);
+          } else { renderFallback(container); status('Places API not available. Manual entry.', false); }
+        } catch(e) { renderFallback(container); status('Error initializing Places. Manual entry.', false); }
+      };
+      document.head.appendChild(s);
+    }
+
+    function renderFallback(container) {
+      container.innerHTML = '';
+      const input = document.createElement('input'); input.type='text'; input.id='address'; input.className='input'; input.placeholder='Enter address manually...'; input.required = true;
+      container.appendChild(input);
+    }
+
+    function addDoor() {
+      const id = ++doorIdSeq; doors.push({ id, size:null, custom:false, w:8, h:7 });
+      const host = document.getElementById('doors');
+      const wrap = document.createElement('div'); wrap.className = 'box'; wrap.id = 'door_'+id;
+      wrap.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div>🚪 Door ${doors.length}</div>
+          ${doors.length>1?'<button class="remove" onclick="removeDoor('+id+')">Remove</button>':''}
+        </div>
+        <div class="grid">
+          ${['8x7','9x7','16x7','18x7','8x8','16x8'].map(s=>`<button class="choice" data-size="${s}" data-door="${id}" onclick="selectSize(${id}, '${s}', this)">${s}</button>`).join('')}
+          <button class="choice" data-size="custom" data-door="${id}" onclick="selectSize(${id}, 'custom', this)">Custom</button>
+        </div>
+        <div id="custom_${id}" class="grid hidden" style="margin-top:8px;">
+          <select id="w_${id}" class="input"></select>
+          <select id="h_${id}" class="input"></select>
+        </div>
+      `;
+      host.appendChild(wrap);
+      // populate custom selects
+      const wSel=document.getElementById('w_'+id), hSel=document.getElementById('h_'+id);
+      for (let w=6; w<=20; w++) { const o=document.createElement('option'); o.value=w; o.textContent=w+"'"; wSel.appendChild(o); }
+      ;[6,6.5,7,7.5,8,8.5,9,9.5,10].forEach(h=>{ const o=document.createElement('option'); o.value=h; o.textContent=h+"'"; hSel.appendChild(o); });
+      wSel.value=8; hSel.value=7;
+    }
+    function removeDoor(id) {
+      doors = doors.filter(d=>d.id!==id); document.getElementById('door_'+id)?.remove();
+    }
+    function selectSize(id, size, btn) {
+      const entry = doors.find(d=>d.id===id); if (!entry) return;
+      const wrap = document.getElementById('door_'+id);
+      wrap.querySelectorAll('.choice').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      if (size==='custom') { entry.custom=true; document.getElementById('custom_'+id).classList.remove('hidden'); }
+      else { entry.custom=false; document.getElementById('custom_'+id).classList.add('hidden'); const [w,h]=size.split('x'); entry.w=+w; entry.h=+h; entry.size=size; }
+    }
+
+    function getAddressValue() {
+      if (placeAutocomplete && placeAutocomplete.value) return placeAutocomplete.value.trim();
+      const inp = document.getElementById('address'); return inp ? inp.value.trim() : '';
+    }
+
+    function submitForm(e) {
+      e.preventDefault();
+      const address = getAddressValue(); if (!address) { status('Please enter an address', false); return; }
+      if (doors.length===0) { status('Please add at least one door', false); return; }
+      for (let i=0;i<doors.length;i++) if (!doors[i].custom && !doors[i].size) { status(`Select size for Door ${i+1}`, false); return; }
+      const payload = { address, doors: doors.map((d,i)=>({ doorNumber:i+1, width: d.custom? +document.getElementById('w_'+d.id).value : d.w, height: d.custom? +document.getElementById('h_'+d.id).value : d.h, sizeCategory: d.custom? 'custom' : d.size })) };
+      console.log('Submitting', payload); status('Submitted successfully!', true);
+      document.getElementById('form').reset(); document.getElementById('doors').innerHTML=''; doors=[]; doorIdSeq=0; addDoor();
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{ initAddress(); addDoor(); document.getElementById('addDoor').addEventListener('click', addDoor); document.getElementById('form').addEventListener('submit', submitForm); });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <div id="status" class="status" style="display:none"></div>
+    <div class="box">
+      <h3>📍 Address</h3>
+      <div id="addressContainer"></div>
+    </div>
+    <div class="box">
+      <h3>🚪 Doors</h3>
+      <div id="doors"></div>
+      <button id="addDoor" class="btn" type="button">➕ Add Another Door</button>
+    </div>
+    <div class="box">
+      <form id="form">
+        <button class="btn" type="submit">🚀 Submit Data</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
+

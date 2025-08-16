@@ -33,8 +33,12 @@ COPY --from=builder /app/build /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
 
+# Copy start script and make executable
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
 # Expose port 8080 (Cloud Run requirement)
 EXPOSE 8080
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Start via start.sh to generate env.js at runtime
+CMD ["/start.sh"]
