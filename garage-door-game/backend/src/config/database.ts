@@ -12,14 +12,21 @@ try {
   throw error;
 }
 
-// Handle both DATABASE_PATH and DATABASE_URL environment variables
+// Use in-memory database for Cloud Run to avoid filesystem issues
 const getDatabasePath = () => {
+  // Check if we're in Cloud Run environment
+  if (process.env.NODE_ENV === 'production' || process.env.K_SERVICE) {
+    console.log('🗄️ Cloud Run detected - using in-memory database');
+    return ':memory:';
+  }
+
+  // Local development - use file-based database
   if (process.env.DATABASE_URL) {
-    // Handle DATABASE_URL format like "sqlite:/tmp/garage_game.db"
     const dbPath = process.env.DATABASE_URL.replace('sqlite:', '');
     console.log('🗄️ Using DATABASE_URL:', process.env.DATABASE_URL, '-> Path:', dbPath);
     return dbPath;
   }
+
   const defaultPath = process.env.DATABASE_PATH || './database/garage_game.db';
   console.log('🗄️ Using default database path:', defaultPath);
   return defaultPath;
@@ -28,22 +35,26 @@ const getDatabasePath = () => {
 const DATABASE_PATH = getDatabasePath();
 console.log('🗄️ Final database path:', DATABASE_PATH);
 
-// Ensure database directory exists
-const dbDir = path.dirname(DATABASE_PATH);
-console.log('🗄️ Database directory:', dbDir);
-console.log('🗄️ Directory exists:', fs.existsSync(dbDir));
+// Only create directory for file-based databases
+if (DATABASE_PATH !== ':memory:') {
+  const dbDir = path.dirname(DATABASE_PATH);
+  console.log('🗄️ Database directory:', dbDir);
+  console.log('🗄️ Directory exists:', fs.existsSync(dbDir));
 
-if (!fs.existsSync(dbDir)) {
-  console.log('🗄️ Creating database directory:', dbDir);
-  try {
-    fs.mkdirSync(dbDir, { recursive: true });
-    console.log('✅ Database directory created successfully');
-  } catch (error) {
-    console.error('❌ Failed to create database directory:', error);
-    throw error;
+  if (!fs.existsSync(dbDir)) {
+    console.log('🗄️ Creating database directory:', dbDir);
+    try {
+      fs.mkdirSync(dbDir, { recursive: true });
+      console.log('✅ Database directory created successfully');
+    } catch (error) {
+      console.error('❌ Failed to create database directory:', error);
+      throw error;
+    }
+  } else {
+    console.log('✅ Database directory already exists');
   }
 } else {
-  console.log('✅ Database directory already exists');
+  console.log('✅ Using in-memory database - no directory needed');
 }
 
 // Enable verbose mode in development
@@ -56,22 +67,27 @@ export const db = new sqlite.Database(DATABASE_PATH, sqlite3.OPEN_READWRITE | sq
   if (err) {
     console.error('❌ Error opening database:', err.message);
     console.error('❌ Database path:', DATABASE_PATH);
-    console.error('❌ Database directory exists:', fs.existsSync(dbDir));
-    console.error('❌ Database file exists:', fs.existsSync(DATABASE_PATH));
-    console.error('❌ Database directory permissions:', (() => {
-      try {
-        const stats = fs.statSync(dbDir);
-        return `mode: ${stats.mode.toString(8)}, uid: ${stats.uid}, gid: ${stats.gid}`;
-      } catch (e) {
-        return `Error getting stats: ${e}`;
-      }
-    })());
+    if (DATABASE_PATH !== ':memory:') {
+      console.error('❌ Database directory exists:', fs.existsSync(path.dirname(DATABASE_PATH)));
+      console.error('❌ Database file exists:', fs.existsSync(DATABASE_PATH));
+      console.error('❌ Database directory permissions:', (() => {
+        try {
+          const stats = fs.statSync(path.dirname(DATABASE_PATH));
+          return `mode: ${stats.mode.toString(8)}, uid: ${stats.uid}, gid: ${stats.gid}`;
+        } catch (e) {
+          return `Error getting stats: ${e}`;
+        }
+      })());
+    }
     console.error('❌ Full error:', err);
     console.error('❌ Error code:', err.code);
     console.error('❌ Error errno:', err.errno);
     process.exit(1);
   }
   console.log('✅ Connected to SQLite database at:', DATABASE_PATH);
+  if (DATABASE_PATH === ':memory:') {
+    console.log('✅ Using in-memory database - data will not persist between restarts');
+  }
   console.log('✅ Database connection established successfully');
 });
 
