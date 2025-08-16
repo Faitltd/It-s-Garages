@@ -14,8 +14,8 @@ RUN npm ci
 COPY . .
 
 # Accept build arguments
-ARG VITE_API_BASE_URL
-ARG PUBLIC_API_BASE_URL
+ARG VITE_API_BASE_URL=https://garage-door-backend-341270520862.us-central1.run.app/api
+ARG PUBLIC_API_BASE_URL=https://garage-door-backend-341270520862.us-central1.run.app/api
 
 # Set environment variables for build
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL

@@ -45,48 +45,24 @@
 				<div class="mb-6">
 					<div class="text-box mb-4">
 						<h2 class="text-lg mb-2">Welcome back, {user.username}!</h2>
-						<p class="text-sm text-gray-300">Choose what you'd like to do:</p>
+						<p class="text-sm text-gray-300">Start collecting garage door data:</p>
 					</div>
 				</div>
 
-				<div class="space-y-4 mb-6">
-					<!-- Data Entry Option -->
-					<div class="text-box p-4">
-						<div class="mb-4">
-							<div class="text-3xl mb-2">📏</div>
-							<h3 class="text-base font-bold mb-2">MEASURE DOORS</h3>
-							<p class="text-xs text-gray-300 mb-4">
-								Add real garage door measurements with GPS location.
+				<!-- Main Action - Data Collection Only -->
+				<div class="mb-6">
+					<div class="text-box p-6">
+						<div class="text-center mb-6">
+							<div class="text-4xl mb-4">📏</div>
+							<h3 class="text-xl font-bold mb-3">COLLECT GARAGE DOOR DATA</h3>
+							<p class="text-sm text-gray-300 mb-6">
+								Use GPS to find your location, measure garage doors, and contribute to our comprehensive database.
 							</p>
 						</div>
-						<a href="/data-entry" class="btn-retro btn-success w-full text-sm">
-							START MEASURING
+						<a href="/data-entry" class="btn-retro btn-primary w-full text-lg">
+							🚀 START DATA COLLECTION
 						</a>
 					</div>
-
-					<!-- Single Game Option -->
-					<div class="text-box p-4">
-						<div class="mb-4">
-							<div class="text-3xl mb-2">🎮</div>
-							<h3 class="text-base font-bold mb-2">GARAGE DOOR GAME</h3>
-							<p class="text-xs text-gray-300 mb-4">
-								Guess garage door sizes from Street View images. Skip if no door visible.
-							</p>
-						</div>
-						<a href="/validation-game" class="btn-retro btn-primary w-full text-sm">
-							PLAY GAME
-						</a>
-					</div>
-				</div>
-
-				<!-- Additional Options -->
-				<div class="space-y-2 mb-6">
-					<a href="/leaderboard" class="btn-retro btn-outline w-full text-sm">
-						🏆 LEADERBOARD
-					</a>
-					<a href="/achievements" class="btn-retro btn-outline w-full text-sm">
-						🎖️ ACHIEVEMENTS
-					</a>
 				</div>
 
 				<!-- Logout -->
@@ -98,10 +74,10 @@
 				<!-- Login prompt for new users -->
 				<div class="space-y-6">
 					<div class="text-box p-6">
-						<h2 class="text-lg mb-4">Join the Garage Door Revolution!</h2>
+						<h2 class="text-lg mb-4">Join the Data Collection Mission!</h2>
 						<p class="text-sm text-gray-300 mb-4">
 							Help us build the world's most comprehensive garage door database.
-							Measure real doors, play games, and earn points!
+							Use GPS to find locations and collect detailed measurements!
 						</p>
 					</div>
 

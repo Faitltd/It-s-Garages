@@ -17,7 +17,7 @@ import { createApp } from './app';
 console.log('✅ App module imported');
 
 const app = createApp();
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT || '3001', 10);
 
 // Initialize database and start server
 const startServer = async () => {

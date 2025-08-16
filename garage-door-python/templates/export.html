@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Export - Garage Door Game{% endblock %}
+{% block content %}
+<div class="card" style="text-align: center;">
+  <h2 style="color: #fbbf24; margin-bottom: 10px;">📦 Export for Roboflow</h2>
+  <p style="color: #9ca3af; margin-bottom: 20px;">Download a ZIP containing images and labels.csv (filename, door_count, door_sizes)</p>
+  <a class="btn btn-success" href="/api/export/roboflow">⬇️ Download Export</a>
+</div>
+{% endblock %}

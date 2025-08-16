@@ -80,8 +80,8 @@ export const db = new sqlite.Database(DATABASE_PATH, sqlite3.OPEN_READWRITE | sq
       })());
     }
     console.error('❌ Full error:', err);
-    console.error('❌ Error code:', err.code);
-    console.error('❌ Error errno:', err.errno);
+    console.error('❌ Error code:', (err as any).code);
+    console.error('❌ Error errno:', (err as any).errno);
     process.exit(1);
   }
   console.log('✅ Connected to SQLite database at:', DATABASE_PATH);
@@ -140,44 +140,52 @@ export const initializeDatabase = (): Promise<void> => {
         )
       `);
 
-      // Game sessions table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS game_sessions (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          job_id INTEGER NOT NULL,
-          guess_door_count INTEGER,
-          guess_door_width REAL,
-          guess_door_height REAL,
-          guess_garage_type VARCHAR(50),
-          is_correct BOOLEAN DEFAULT 0,
-          points_earned INTEGER DEFAULT 0,
-          time_taken INTEGER,
-          difficulty VARCHAR(20) DEFAULT 'medium',
-          location_lat REAL,
-          location_lng REAL,
-          location_address TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users (id),
-          FOREIGN KEY (job_id) REFERENCES jobs (id)
-        )
-      `);
 
-      // Data submissions table - Updated to make material, color, style optional
+
+      // Data submissions table - Comprehensive ML training data collection
       db.run(`
         CREATE TABLE IF NOT EXISTS data_submissions (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           user_id INTEGER NOT NULL,
+
+          -- Location data
           address TEXT NOT NULL,
-          garage_door_size TEXT NOT NULL,
-          material TEXT,
-          color TEXT,
-          style TEXT,
+          latitude REAL,
+          longitude REAL,
+          address_source TEXT DEFAULT 'manual', -- 'gps', 'manual', 'approximate'
+
+          -- Door measurements
+          garage_door_count INTEGER NOT NULL DEFAULT 1,
+          garage_door_width REAL,
+          garage_door_height REAL,
+
+          -- ML Training Tags - Door characteristics
+          door_size_category TEXT, -- 'single', 'double', 'custom'
+          door_material TEXT, -- 'wood', 'steel', 'aluminum', 'composite', 'vinyl', 'glass'
+          door_style TEXT, -- 'traditional', 'carriage_house', 'contemporary', 'modern', 'custom'
+          door_condition TEXT, -- 'new', 'good', 'fair', 'poor'
+
+          -- ML Training Tags - Visibility and quality
+          visibility_quality TEXT, -- 'clear', 'partially_obscured', 'poor_lighting', 'distant'
+          image_quality TEXT, -- 'high', 'medium', 'low'
+          weather_conditions TEXT, -- 'clear', 'overcast', 'rainy', 'snowy'
+
+          -- Legacy fields (for backward compatibility)
+          garage_door_size TEXT, -- Deprecated, use door_size_category
+          material TEXT, -- Deprecated, use door_material
+          color TEXT, -- Deprecated
+          style TEXT, -- Deprecated, use door_style
+
+          -- Additional data
           notes TEXT,
           photo_path TEXT,
+          confidence_level INTEGER DEFAULT 3,
           status TEXT DEFAULT 'pending',
+
+          -- Timestamps
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
           FOREIGN KEY (user_id) REFERENCES users (id)
         )
       `);
@@ -525,40 +533,7 @@ export const initializeDatabase = (): Promise<void> => {
         ORDER BY gde.created_at DESC
       `);
 
-      // Validation Game Results - Track game performance against verified data
-      db.run(`
-        CREATE TABLE IF NOT EXISTS validation_game_results (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          data_entry_id INTEGER NOT NULL,
-          session_id TEXT NOT NULL,
 
-          -- User's guess
-          guess_door_count INTEGER NOT NULL,
-          guess_door_width REAL NOT NULL,
-          guess_door_height REAL NOT NULL,
-          guess_door_type TEXT NOT NULL,
-          confidence_level INTEGER NOT NULL,
-
-          -- Results
-          accuracy_score REAL NOT NULL,
-          points_earned INTEGER NOT NULL,
-          is_correct BOOLEAN NOT NULL,
-          time_taken REAL,
-
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-          FOREIGN KEY (user_id) REFERENCES users (id),
-          FOREIGN KEY (data_entry_id) REFERENCES garage_door_data_entries (id)
-        )
-      `);
-
-      // Indexes for new tables
-      db.run(`CREATE INDEX IF NOT EXISTS idx_game_questions_difficulty ON game_questions(difficulty)`);
-      db.run(`CREATE INDEX IF NOT EXISTS idx_game_questions_active ON game_questions(is_active)`);
-      db.run(`CREATE INDEX IF NOT EXISTS idx_question_game_results_user_id ON question_game_results(user_id)`);
-      db.run(`CREATE INDEX IF NOT EXISTS idx_question_game_results_question_id ON question_game_results(question_id)`);
-      db.run(`CREATE INDEX IF NOT EXISTS idx_user_achievements_user_id ON user_achievements(user_id)`);
 
       // Indexes for data entries
       db.run(`CREATE INDEX IF NOT EXISTS idx_garage_door_data_entries_user_id ON garage_door_data_entries(user_id)`);
@@ -567,9 +542,12 @@ export const initializeDatabase = (): Promise<void> => {
       db.run(`CREATE INDEX IF NOT EXISTS idx_garage_door_data_entries_door_size ON garage_door_data_entries(door_size)`);
       db.run(`CREATE INDEX IF NOT EXISTS idx_garage_door_data_entries_created_at ON garage_door_data_entries(created_at)`);
 
-      // Indexes for validation game results
-      db.run(`CREATE INDEX IF NOT EXISTS idx_validation_game_results_user_id ON validation_game_results(user_id)`);
-      db.run(`CREATE INDEX IF NOT EXISTS idx_validation_game_results_data_entry_id ON validation_game_results(data_entry_id)`);
+      // Indexes for data submissions
+      db.run(`CREATE INDEX IF NOT EXISTS idx_data_submissions_user_id ON data_submissions(user_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_data_submissions_address ON data_submissions(address)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_data_submissions_created_at ON data_submissions(created_at)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_data_submissions_door_material ON data_submissions(door_material)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_data_submissions_door_style ON data_submissions(door_style)`);
       db.run(`CREATE INDEX IF NOT EXISTS idx_validation_game_results_created_at ON validation_game_results(created_at)`);
 
       // Simple game locations table - For basic game functionality

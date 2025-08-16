@@ -20,25 +20,57 @@ const reverseGeocodeSchema = Joi.object({
   longitude: Joi.number().min(-180).max(180).required()
 });
 
-// Validation schema for data entry
+// Validation schema for comprehensive data entry with ML training tags
 const dataEntrySchema = Joi.object({
+  // Basic data
   address: Joi.string().required().min(10).max(200),
+  latitude: Joi.number().min(-90).max(90).optional(),
+  longitude: Joi.number().min(-180).max(180).optional(),
+  address_source: Joi.string().valid('gps', 'manual', 'approximate').default('manual'),
+
+  // Door measurements
   garage_door_count: Joi.number().integer().min(1).max(10).required(),
   garage_door_width: Joi.number().positive().required(),
   garage_door_height: Joi.number().positive().required(),
-  garage_door_type: Joi.string().valid('single', 'double', 'triple', 'commercial', 'custom').required(),
-  garage_door_material: Joi.string().valid('steel', 'wood', 'aluminum', 'composite', 'glass', 'other').optional(),
+
+  // ML Training Tags - Door characteristics
+  door_size_category: Joi.string().valid('single', 'double', 'custom').required(),
+  door_material: Joi.string().valid('wood', 'steel', 'aluminum', 'composite', 'vinyl', 'glass').required(),
+  door_style: Joi.string().valid('traditional', 'carriage_house', 'contemporary', 'modern', 'custom').required(),
+  door_condition: Joi.string().valid('new', 'good', 'fair', 'poor').required(),
+
+  // ML Training Tags - Visibility and quality
+  visibility_quality: Joi.string().valid('clear', 'partially_obscured', 'poor_lighting', 'distant').required(),
+  image_quality: Joi.string().valid('high', 'medium', 'low').required(),
+  weather_conditions: Joi.string().valid('clear', 'overcast', 'rainy', 'snowy').required(),
+
+  // Additional data
   notes: Joi.string().max(500).optional(),
-  confidence_level: Joi.number().min(1).max(5).default(3) // 1-5 scale
+  confidence_level: Joi.number().min(1).max(5).default(3)
 });
 
 interface DataEntry {
+  // Basic data
   address: string;
+  latitude?: number;
+  longitude?: number;
+  address_source: string;
+
+  // Door measurements
   garage_door_count: number;
   garage_door_width: number;
   garage_door_height: number;
-  garage_door_type: string;
-  garage_door_material?: string;
+
+  // ML Training Tags
+  door_size_category: string;
+  door_material: string;
+  door_style: string;
+  door_condition: string;
+  visibility_quality: string;
+  image_quality: string;
+  weather_conditions: string;
+
+  // Additional data
   notes?: string;
   confidence_level: number;
 }
@@ -386,27 +418,43 @@ router.post('/:id/verify',
 async function saveDataEntry(data: any): Promise<number> {
   return new Promise((resolve, reject) => {
     const stmt = db.prepare(`
-      INSERT INTO garage_door_data_entries (
-        user_id, address, garage_door_count, garage_door_width, garage_door_height,
-        garage_door_type, garage_door_material, door_size, notes, confidence_level,
-        street_view_url, latitude, longitude, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO data_submissions (
+        user_id, address, latitude, longitude, address_source,
+        garage_door_count, garage_door_width, garage_door_height,
+        door_size_category, door_material, door_style, door_condition,
+        visibility_quality, image_quality, weather_conditions,
+        garage_door_size, material, style, notes, photo_path, confidence_level,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `);
+
+    // Use provided coordinates or geocoded coordinates
+    const lat = data.latitude || data.coordinates?.lat || null;
+    const lng = data.longitude || data.coordinates?.lng || null;
 
     stmt.run([
       data.userId,
       data.address,
+      lat,
+      lng,
+      data.address_source || 'manual',
       data.garage_door_count,
       data.garage_door_width,
       data.garage_door_height,
-      data.garage_door_type,
-      data.garage_door_material || null,
-      data.doorSize,
+      data.door_size_category,
+      data.door_material,
+      data.door_style,
+      data.door_condition,
+      data.visibility_quality,
+      data.image_quality,
+      data.weather_conditions,
+      // Legacy fields for backward compatibility
+      data.doorSize || `${data.garage_door_width}x${data.garage_door_height}`,
+      data.door_material, // Copy to legacy field
+      data.door_style, // Copy to legacy field
       data.notes || null,
-      data.confidence_level,
       data.streetViewUrl || null,
-      data.coordinates.lat || null,
-      data.coordinates.lng || null
+      data.confidence_level
     ], function(err) {
       if (err) {
         reject(err);
@@ -422,13 +470,12 @@ async function saveDataEntry(data: any): Promise<number> {
 async function getDataEntries(limit: number, offset: number): Promise<any[]> {
   return new Promise((resolve, reject) => {
     const stmt = db.prepare(`
-      SELECT 
-        gde.*,
-        u.username,
-        CASE WHEN gde.verified_at IS NOT NULL THEN 1 ELSE 0 END as is_verified
-      FROM garage_door_data_entries gde
-      JOIN users u ON gde.user_id = u.id
-      ORDER BY gde.created_at DESC
+      SELECT
+        ds.*,
+        u.username
+      FROM data_submissions ds
+      JOIN users u ON ds.user_id = u.id
+      ORDER BY ds.created_at DESC
       LIMIT ? OFFSET ?
     `);
 
@@ -446,7 +493,7 @@ async function getDataEntries(limit: number, offset: number): Promise<any[]> {
 
 async function getDataEntriesCount(): Promise<number> {
   return new Promise((resolve, reject) => {
-    db.get('SELECT COUNT(*) as count FROM garage_door_data_entries', (err, row: any) => {
+    db.get('SELECT COUNT(*) as count FROM data_submissions', (err, row: any) => {
       if (err) {
         reject(err);
         return;
@@ -485,9 +532,9 @@ async function updateDataEntry(id: number, userId: number, data: DataEntry): Pro
     const doorSize = `${data.garage_door_width}x${data.garage_door_height} feet`;
     
     const stmt = db.prepare(`
-      UPDATE garage_door_data_entries 
+      UPDATE data_submissions
       SET garage_door_count = ?, garage_door_width = ?, garage_door_height = ?,
-          garage_door_type = ?, garage_door_material = ?, door_size = ?,
+          door_size_category = ?, door_material = ?, garage_door_size = ?,
           notes = ?, confidence_level = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND user_id = ?
     `);
@@ -496,8 +543,8 @@ async function updateDataEntry(id: number, userId: number, data: DataEntry): Pro
       data.garage_door_count,
       data.garage_door_width,
       data.garage_door_height,
-      data.garage_door_type,
-      data.garage_door_material || null,
+      data.door_size_category,
+      data.door_material,
       doorSize,
       data.notes || null,
       data.confidence_level,

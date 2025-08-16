@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 
@@ -10,12 +9,9 @@ import path from 'path';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import jobRoutes from './routes/jobs';
-import gameRoutes from './routes/game';
-import leaderboardRoutes from './routes/leaderboard';
 import dataRoutes from './routes/data';
 import estimateRoutes from './routes/estimate';
 import dataEntryRoutes from './routes/dataEntry';
-import validationGameRoutes from './routes/validationGame';
 import testRoutes from './routes/test';
 import streetViewRoutes from './routes/streetView';
 
@@ -60,33 +56,45 @@ export const createApp = () => {
     referrerPolicy: { policy: "strict-origin-when-cross-origin" }
   }));
 
-  // CORS configuration
+  // CORS configuration - Allow all origins for now to debug
   const allowedOrigins = [
     'http://localhost:5173', // Development
-    'https://itsgarages.itsfait.com', // Production
-    'https://garage-door-frontend-341270520862.us-central1.run.app' // Cloud Run frontend
+    'https://itsgarages.itsfait.com', // Production custom domain
+    'https://garage-door-frontend-341270520862.us-central1.run.app', // Cloud Run frontend
+    'http://localhost:3000', // Local development
+    'http://localhost:4173', // Vite preview
+    'https://localhost:5173' // HTTPS local development
   ];
 
   app.use(cors({
     origin: (origin, callback) => {
+      console.log('🔍 CORS Request from origin:', origin);
+
       // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
+      if (!origin) {
+        console.log('✅ Allowing request with no origin');
+        return callback(null, true);
+      }
 
       // Check if the origin is in our allowed list
       if (allowedOrigins.includes(origin)) {
+        console.log('✅ Origin allowed:', origin);
         return callback(null, true);
       }
 
       // If CORS_ORIGIN is set, use it as a fallback
       if (process.env.CORS_ORIGIN && origin === process.env.CORS_ORIGIN) {
+        console.log('✅ Origin allowed via CORS_ORIGIN env var:', origin);
         return callback(null, true);
       }
 
+      console.log('❌ Origin not allowed:', origin);
+      console.log('📋 Allowed origins:', allowedOrigins);
       return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept'],
     preflightContinue: false,
     optionsSuccessStatus: 204
   }));
@@ -157,12 +165,9 @@ export const createApp = () => {
   app.use('/api/auth', authRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/jobs', jobRoutes);
-  app.use('/api/game', gameRoutes);
-  app.use('/api/leaderboard', leaderboardRoutes);
   app.use('/api/data', dataRoutes);
   app.use('/api/estimate', estimateRoutes);
   app.use('/api/data-entry', dataEntryRoutes);
-  app.use('/api/validation-game', validationGameRoutes);
   app.use('/api/test', testRoutes);
   app.use('/api/streetview', streetViewRoutes);
 

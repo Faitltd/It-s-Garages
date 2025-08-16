@@ -16,8 +16,7 @@ steps:
 
 # Substitutions for build arguments
 substitutions:
-  _API_BASE_URL: 'https://garage-door-backend-${PROJECT_NUMBER}.${_REGION}.run.app/api'
-  _REGION: 'us-central1'
+  _API_BASE_URL: 'https://garage-door-backend-341270520862.us-central1.run.app/api'
 
 # Store the image in Container Registry
 images:

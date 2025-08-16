@@ -6,14 +6,33 @@
   import { getApiBase } from '$lib/config';
   const API_BASE = getApiBase();
 
+  // Basic data
   let address = '';
+  let latitude: number | null = null;
+  let longitude: number | null = null;
+  let addressSource = 'manual'; // 'gps', 'manual', 'approximate'
+
+  // Door measurements
   let garage_door_count = 1;
   let garage_door_width = 8;
   let garage_door_height = 7;
-  let garage_door_type = 'single';
-  let garage_door_material = 'steel';
+
+  // ML Training Tags - Door characteristics
+  let door_size_category = 'single'; // single, double, custom
+  let door_material = 'steel'; // wood, steel, aluminum, composite, vinyl, glass
+  let door_style = 'traditional'; // traditional, carriage_house, contemporary, modern, custom
+  let door_condition = 'good'; // new, good, fair, poor
+
+  // ML Training Tags - Visibility and quality
+  let visibility_quality = 'clear'; // clear, partially_obscured, poor_lighting, distant
+  let image_quality = 'high'; // high, medium, low
+  let weather_conditions = 'clear'; // clear, overcast, rainy, snowy
+
+  // Additional data
   let notes = '';
   let confidence_level = 3;
+
+  // UI state
   let loading = false;
   let message = '';
   let messageType = '';
@@ -49,7 +68,10 @@
         });
       });
 
-      const { latitude, longitude } = (position as GeolocationPosition).coords;
+      const coords = (position as GeolocationPosition).coords;
+      latitude = coords.latitude;
+      longitude = coords.longitude;
+      addressSource = 'gps';
 
       // Reverse geocode using Google Maps API
       const auth = get(authStore);
@@ -66,11 +88,12 @@
         const data = await response.json();
         if (data.address) {
           address = data.address;
-          message = 'Location detected! Address auto-filled.';
+          message = 'Location detected! Address auto-filled from GPS.';
           messageType = 'success';
         } else {
           message = 'Could not determine address from your location';
           messageType = 'error';
+          addressSource = 'approximate';
         }
       } else {
         throw new Error('Failed to get address from location');
@@ -141,21 +164,57 @@
     }
   }
 
-  const doorTypes = [
+
+
+  // ML Training Tag Options
+  const doorSizeCategories = [
     { value: 'single', label: 'Single Door' },
     { value: 'double', label: 'Double Door' },
-    { value: 'triple', label: 'Triple Door' },
-    { value: 'commercial', label: 'Commercial' },
+    { value: 'custom', label: 'Custom Size' }
+  ];
+
+  const doorMaterials = [
+    { value: 'wood', label: 'Wood' },
+    { value: 'steel', label: 'Steel' },
+    { value: 'aluminum', label: 'Aluminum' },
+    { value: 'composite', label: 'Composite' },
+    { value: 'vinyl', label: 'Vinyl' },
+    { value: 'glass', label: 'Glass' }
+  ];
+
+  const doorStyles = [
+    { value: 'traditional', label: 'Traditional' },
+    { value: 'carriage_house', label: 'Carriage House' },
+    { value: 'contemporary', label: 'Contemporary' },
+    { value: 'modern', label: 'Modern' },
     { value: 'custom', label: 'Custom' }
   ];
 
-  const materials = [
-    { value: 'steel', label: 'Steel' },
-    { value: 'wood', label: 'Wood' },
-    { value: 'aluminum', label: 'Aluminum' },
-    { value: 'composite', label: 'Composite' },
-    { value: 'glass', label: 'Glass' },
-    { value: 'other', label: 'Other' }
+  const doorConditions = [
+    { value: 'new', label: 'New' },
+    { value: 'good', label: 'Good' },
+    { value: 'fair', label: 'Fair' },
+    { value: 'poor', label: 'Poor' }
+  ];
+
+  const visibilityQualities = [
+    { value: 'clear', label: 'Clear View' },
+    { value: 'partially_obscured', label: 'Partially Obscured' },
+    { value: 'poor_lighting', label: 'Poor Lighting' },
+    { value: 'distant', label: 'Distant' }
+  ];
+
+  const imageQualities = [
+    { value: 'high', label: 'High' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'low', label: 'Low' }
+  ];
+
+  const weatherConditions = [
+    { value: 'clear', label: 'Clear' },
+    { value: 'overcast', label: 'Overcast' },
+    { value: 'rainy', label: 'Rainy' },
+    { value: 'snowy', label: 'Snowy' }
   ];
 
   // Common door sizes for quick selection
@@ -205,12 +264,27 @@
           'Authorization': `Bearer ${auth.token}`
         },
         body: JSON.stringify({
+          // Basic data
           address: address.trim(),
+          latitude,
+          longitude,
+          address_source: addressSource,
+
+          // Door measurements
           garage_door_count,
           garage_door_width,
           garage_door_height,
-          garage_door_type,
-          garage_door_material,
+
+          // ML Training Tags
+          door_size_category,
+          door_material,
+          door_style,
+          door_condition,
+          visibility_quality,
+          image_quality,
+          weather_conditions,
+
+          // Additional data
           notes: notes.trim() || undefined,
           confidence_level
         })
@@ -222,11 +296,19 @@
         showMessage('Data submitted successfully! Street View image captured.', 'success');
         // Reset form
         address = '';
+        latitude = null;
+        longitude = null;
+        addressSource = 'manual';
         garage_door_count = 1;
         garage_door_width = 8;
         garage_door_height = 7;
-        garage_door_type = 'single';
-        garage_door_material = 'steel';
+        door_size_category = 'single';
+        door_material = 'steel';
+        door_style = 'traditional';
+        door_condition = 'good';
+        visibility_quality = 'clear';
+        image_quality = 'high';
+        weather_conditions = 'clear';
         notes = '';
         confidence_level = 3;
       } else {
@@ -251,15 +333,15 @@
 </script>
 
 <svelte:head>
-  <title>Data Entry - It's Garages</title>
+  <title>Garage Door Data Collection - It's Garages</title>
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 py-4">
   <div class="max-w-lg mx-auto px-4">
     <div class="text-box p-4">
-      <h1 class="text-xl font-bold mb-2">📏 MEASURE DOORS</h1>
+      <h1 class="text-xl font-bold mb-2">📏 GARAGE DOOR DATA COLLECTION</h1>
       <p class="text-xs text-gray-300 mb-4">
-        Add real garage door measurements with GPS location.
+        Use GPS to find your location, measure garage doors, and add comprehensive ML training tags for our database.
       </p>
 
       {#if message}
@@ -408,20 +490,20 @@
           {/if}
         </div>
 
-        <!-- Door Type -->
+        <!-- Door Size Category -->
         <div>
           <p class="block text-sm font-medium text-gray-700 mb-2">
-            Door Type *
+            Door Size Category *
           </p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {#each doorTypes as type}
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {#each doorSizeCategories as category}
               <button
                 type="button"
-                class="choice-option {garage_door_type === type.value ? 'selected' : ''}"
-                on:click={() => (garage_door_type = type.value)}
-                aria-pressed={garage_door_type === type.value}
+                class="choice-option {door_size_category === category.value ? 'selected' : ''}"
+                on:click={() => (door_size_category = category.value)}
+                aria-pressed={door_size_category === category.value}
               >
-                {type.label}
+                {category.label}
               </button>
             {/each}
           </div>
@@ -430,17 +512,112 @@
         <!-- Door Material -->
         <div>
           <p class="block text-sm font-medium text-gray-700 mb-2">
-            Door Material
+            Door Material *
           </p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {#each materials as material}
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {#each doorMaterials as material}
               <button
                 type="button"
-                class="choice-option {garage_door_material === material.value ? 'selected' : ''}"
-                on:click={() => (garage_door_material = material.value)}
-                aria-pressed={garage_door_material === material.value}
+                class="choice-option {door_material === material.value ? 'selected' : ''}"
+                on:click={() => (door_material = material.value)}
+                aria-pressed={door_material === material.value}
               >
                 {material.label}
+              </button>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Door Style -->
+        <div>
+          <p class="block text-sm font-medium text-gray-700 mb-2">
+            Door Style *
+          </p>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {#each doorStyles as style}
+              <button
+                type="button"
+                class="choice-option {door_style === style.value ? 'selected' : ''}"
+                on:click={() => (door_style = style.value)}
+                aria-pressed={door_style === style.value}
+              >
+                {style.label}
+              </button>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Door Condition -->
+        <div>
+          <p class="block text-sm font-medium text-gray-700 mb-2">
+            Door Condition *
+          </p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {#each doorConditions as condition}
+              <button
+                type="button"
+                class="choice-option {door_condition === condition.value ? 'selected' : ''}"
+                on:click={() => (door_condition = condition.value)}
+                aria-pressed={door_condition === condition.value}
+              >
+                {condition.label}
+              </button>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Visibility Quality -->
+        <div>
+          <p class="block text-sm font-medium text-gray-700 mb-2">
+            Visibility Quality *
+          </p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {#each visibilityQualities as quality}
+              <button
+                type="button"
+                class="choice-option {visibility_quality === quality.value ? 'selected' : ''}"
+                on:click={() => (visibility_quality = quality.value)}
+                aria-pressed={visibility_quality === quality.value}
+              >
+                {quality.label}
+              </button>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Image Quality -->
+        <div>
+          <p class="block text-sm font-medium text-gray-700 mb-2">
+            Image Quality *
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {#each imageQualities as quality}
+              <button
+                type="button"
+                class="choice-option {image_quality === quality.value ? 'selected' : ''}"
+                on:click={() => (image_quality = quality.value)}
+                aria-pressed={image_quality === quality.value}
+              >
+                {quality.label}
+              </button>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Weather Conditions -->
+        <div>
+          <p class="block text-sm font-medium text-gray-700 mb-2">
+            Weather Conditions *
+          </p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {#each weatherConditions as weather}
+              <button
+                type="button"
+                class="choice-option {weather_conditions === weather.value ? 'selected' : ''}"
+                on:click={() => (weather_conditions = weather.value)}
+                aria-pressed={weather_conditions === weather.value}
+              >
+                {weather.label}
               </button>
             {/each}
           </div>
@@ -469,6 +646,23 @@
           </div>
         </div>
 
+        <!-- Image Upload -->
+        <div>
+          <label for="image" class="block text-sm font-medium text-gray-700 mb-2">
+            Garage Door Photo (Optional)
+          </label>
+          <input
+            type="file"
+            id="image"
+            accept="image/*"
+            capture="environment"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p class="text-xs text-gray-500 mt-1">
+            Take a photo of the garage door for better ML training data
+          </p>
+        </div>
+
         <!-- Notes -->
         <div>
           <label for="notes" class="block text-sm font-medium text-gray-700 mb-2">
@@ -484,21 +678,13 @@
         </div>
 
         <!-- Submit Button -->
-        <div class="flex justify-between items-center">
-          <button
-            type="button"
-            on:click={() => goto('/validation-game')}
-            class="px-4 py-2 text-blue-600 hover:text-blue-800 font-medium"
-          >
-            Play Validation Game →
-          </button>
-
+        <div class="text-center">
           <button
             type="submit"
             disabled={loading}
-            class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="btn-retro btn-primary w-full text-lg"
           >
-            {loading ? 'Submitting...' : 'Submit Data'}
+            {loading ? '⏳ SUBMITTING...' : '🚀 SUBMIT DATA'}
           </button>
         </div>
       </form>
@@ -506,12 +692,13 @@
 
     <!-- Info Box -->
     <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-      <h3 class="font-medium text-blue-900 mb-2">How it works:</h3>
+      <h3 class="font-medium text-blue-900 mb-2">📊 ML Training Data Collection:</h3>
       <ul class="text-sm text-blue-800 space-y-1">
-        <li>• Enter accurate measurements of garage doors you can see</li>
-        <li>• We automatically capture Street View images for the address</li>
-        <li>• Your data helps train machine learning models</li>
-        <li>• Play the validation game to test your skills!</li>
+        <li>• 📍 Use GPS to automatically detect your location</li>
+        <li>• 📏 Enter precise garage door measurements</li>
+        <li>• 🏷️ Add comprehensive ML training tags</li>
+        <li>• 📸 Upload photos for visual training data</li>
+        <li>• 🤖 Help train AI models to recognize garage doors</li>
       </ul>
     </div>
   </div>

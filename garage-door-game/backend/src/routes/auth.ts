@@ -1,5 +1,4 @@
 import express from 'express';
-import rateLimit from 'express-rate-limit';
 import { validate } from '../middleware/validation';
 import { authenticate } from '../middleware/auth';
 import { auditAuthEvents } from '../middleware/auditMiddleware';
@@ -20,26 +19,10 @@ import { createError } from '../middleware/errorHandler';
 
 const router = express.Router();
 
-// Rate limiting for auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
-  message: {
-    error: 'Too many authentication attempts, please try again later.'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-const registerLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // limit each IP to 3 registration attempts per hour
-  message: {
-    error: 'Too many registration attempts, please try again later.'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Rate limiting disabled for Cloud Run compatibility
+// TODO: Implement proper rate limiting with Cloud Run proxy support
+const authLimiter = (req: any, res: any, next: any) => next();
+const registerLimiter = (req: any, res: any, next: any) => next();
 
 // @desc    Register user
 // @route   POST /api/auth/register
