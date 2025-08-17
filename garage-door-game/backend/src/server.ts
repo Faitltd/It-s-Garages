@@ -27,10 +27,7 @@ const startServer = async () => {
     console.log(`🔌 Port: ${PORT}`);
     console.log(`🗄️ Database URL: ${process.env.DATABASE_URL || 'Not set'}`);
 
-    console.log('🔄 Initializing database...');
-    await initializeDatabase();
-    console.log('✅ Database initialized successfully');
-
+    // Start HTTP server first so Cloud Run sees the port quickly
     console.log('🔄 Starting HTTP server...');
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Garage Door Game API Server running on port ${PORT}`);
@@ -42,12 +39,20 @@ const startServer = async () => {
       console.log('✅ Server startup complete');
     });
 
+    // Initialize database asynchronously (do not block port readiness)
+    console.log('🔄 Initializing database (async)...');
+    initializeDatabase()
+      .then(() => console.log('✅ Database initialized successfully'))
+      .catch((err) => {
+        console.error('❌ Database initialization failed (continuing to serve non-DB endpoints):', err);
+      });
+
     server.on('error', (error: any) => {
       console.error('❌ Server error:', error);
-      if (error.code === 'EADDRINUSE') {
+      if ((error as any).code === 'EADDRINUSE') {
         console.error(`❌ Port ${PORT} is already in use`);
       }
-      process.exit(1);
+      // Do not exit immediately; let Cloud Run restart if needed
     });
 
   } catch (error) {
@@ -56,7 +61,7 @@ const startServer = async () => {
       console.error('❌ Error message:', error.message);
       console.error('❌ Error stack:', error.stack);
     }
-    process.exit(1);
+    // Avoid immediate exit to allow Cloud Run to capture logs
   }
 };
 

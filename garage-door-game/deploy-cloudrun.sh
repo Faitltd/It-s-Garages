@@ -35,7 +35,7 @@ gcloud run deploy $BACKEND_SERVICE \
   --memory 1Gi \
   --cpu 1 \
   --set-env-vars NODE_ENV=production \
-  --set-env-vars DATABASE_URL=${DATABASE_URL:-sqlite:./garage_game.db} \
+  --set-env-vars DATABASE_URL=${DATABASE_URL:-sqlite:/tmp/garage_game.db} \
   --set-env-vars JWT_SECRET=${JWT_SECRET:?JWT_SECRET env var required} \
   --set-env-vars GOOGLE_STREET_VIEW_API_KEY=${GOOGLE_STREET_VIEW_API_KEY:?Set GOOGLE_STREET_VIEW_API_KEY} \
   --set-env-vars GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:?Set GOOGLE_MAPS_API_KEY} \

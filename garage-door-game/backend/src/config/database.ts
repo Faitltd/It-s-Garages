@@ -17,7 +17,8 @@ const getDatabasePath = () => {
   // Check if we're in Cloud Run environment
   if (process.env.NODE_ENV === 'production' || process.env.K_SERVICE) {
     console.log('🗄️ Cloud Run detected - using in-memory database');
-    return ':memory:';
+    // Use writable /tmp in Cloud Run to persist within revision lifetime
+    return process.env.DATABASE_URL ? process.env.DATABASE_URL.replace('sqlite:', '') : '/tmp/garage_game.db';
   }
 
   // Local development - use file-based database
