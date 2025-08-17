@@ -30,6 +30,11 @@ FROM nginx:alpine
 # Copy built application from builder stage
 COPY --from=builder /app/build /usr/share/nginx/html
 
+# Explicitly include static assets not bundled by SvelteKit (safety net)
+# This ensures /garage-door-data-entry and any other files in /static are present
+COPY static/garage-door-data-entry /usr/share/nginx/html/garage-door-data-entry
+COPY static/garage-door-data-entry.html /usr/share/nginx/html/
+
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
 
