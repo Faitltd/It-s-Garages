@@ -39,7 +39,13 @@ const startServer = async () => {
     // Initialize database asynchronously (do not block port readiness)
     console.log('🔄 Initializing database (async)...');
     import('./config/database')
-      .then(({ initializeDatabase }) => initializeDatabase())
+      .then(({ initializeDatabase, db }) => {
+        // Wire DB into lazy accessor for routes
+        return import('./config/dbAccessor').then(({ setDb }) => {
+          setDb(db);
+          return initializeDatabase();
+        });
+      })
       .then(() => console.log('✅ Database initialized successfully'))
       .catch((err) => {
         console.error('❌ Database initialization failed (continuing to serve non-DB endpoints):', err);

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { authenticate } from '../middleware/auth';
-import { db } from '../config/database';
+import { getDb } from '../config/dbAccessor';
 
 const router = Router();
 
@@ -67,6 +67,8 @@ router.post('/submit', authenticate, (req: any, res, next) => {
     // Simple synchronous approach - insert first door only for now
     const firstDoor = doors[0];
 
+    const db = getDb();
+    if (!db) return res.status(503).json({ success: false, error: 'Database not ready' });
     return db.run(`
       INSERT INTO simple_data_submissions (
         user_id, address, garage_door_size, notes, created_at
@@ -115,6 +117,8 @@ router.get('/my-submissions', authenticate, (req: any, res, next) => {
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = (page - 1) * limit;
 
+    const db = getDb();
+    if (!db) return res.status(503).json({ success: false, error: 'Database not ready' });
     return db.all(`
       SELECT
         id,
@@ -137,7 +141,9 @@ router.get('/my-submissions', authenticate, (req: any, res, next) => {
       }
 
       // Get total count
-      return db.get('SELECT COUNT(*) as total FROM data_submissions WHERE user_id = ?', [userId], (err, row: any) => {
+      const db2 = getDb();
+      if (!db2) return res.status(503).json({ success: false, error: 'Database not ready' });
+      return db2.get('SELECT COUNT(*) as total FROM data_submissions WHERE user_id = ?', [userId], (err, row: any) => {
         if (err) {
           return res.status(500).json({ success: false, error: 'Failed to get count' });
         }
@@ -191,7 +197,9 @@ router.get('/all', authenticate, (req: any, res, next) => {
       }
 
       // Get total count
-      return db.get('SELECT COUNT(*) as total FROM data_submissions', [], (err, row: any) => {
+      const db3 = getDb();
+      if (!db3) return res.status(503).json({ success: false, error: 'Database not ready' });
+      return db3.get('SELECT COUNT(*) as total FROM data_submissions', [], (err, row: any) => {
         if (err) {
           return res.status(500).json({ success: false, error: 'Failed to get count' });
         }
