@@ -14,6 +14,7 @@ import estimateRoutes from './routes/estimate';
 import dataEntryRoutes from './routes/dataEntry';
 import testRoutes from './routes/test';
 import streetViewRoutes from './routes/streetView';
+import placesRoutes from './routes/places';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -170,6 +171,7 @@ export const createApp = () => {
   app.use('/api/data-entry', dataEntryRoutes);
   app.use('/api/test', testRoutes);
   app.use('/api/streetview', streetViewRoutes);
+  app.use('/api/places', placesRoutes);
 
   // API info endpoint
   app.get('/api', (req, res) => {

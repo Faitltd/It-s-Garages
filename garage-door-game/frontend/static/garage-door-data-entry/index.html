@@ -20,9 +20,7 @@
     .hidden { display: none; }
     .remove { background: #cc0000; color: #fff; border: none; padding: 8px 12px; cursor: pointer; }
   </style>
-  <script src="/env.js"></script>
   <script>
-    let placeAutocomplete = null;
     let doors = []; let doorIdSeq = 0;
 
     function status(msg, ok) {
@@ -31,31 +29,47 @@
       if (ok) setTimeout(()=> el.style.display='none', 2000);
     }
 
+    async function fetchJSON(url) {
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
     function initAddress() {
-      const apiKey = window.__ENV && window.__ENV.GOOGLE_PLACES_API_KEY;
       const container = document.getElementById('addressContainer');
-      if (!apiKey) { renderFallback(container); status('Manual address entry (no API key configured)', false); return; }
-      const s = document.createElement('script');
-      s.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&loading=async&callback=initGooglePlaces`;
-      s.async = true; s.defer = true; s.onerror = () => { renderFallback(container); status('Failed to load Google Places. Using manual entry.', false); };
-      window.initGooglePlaces = () => {
+      container.innerHTML = '';
+      // Base input
+      const input = document.createElement('input'); input.type='text'; input.id='address'; input.className='input'; input.placeholder='Enter address...'; input.required = true;
+      // Suggestions list
+      const list = document.createElement('div'); list.id = 'addressSuggestions'; list.style.background = '#fff'; list.style.border = '2px solid #000'; list.style.boxShadow = '3px 3px 0 #000'; list.style.marginTop = '6px'; list.style.maxHeight = '220px'; list.style.overflowY = 'auto'; list.style.display = 'none';
+      container.appendChild(input); container.appendChild(list);
+
+      let controller = null; let lastQ = '';
+      input.addEventListener('input', async () => {
+        const q = input.value.trim();
+        if (q.length < 3) { list.style.display='none'; list.innerHTML=''; return; }
+        if (q === lastQ) return; lastQ = q;
         try {
-          if (google.maps?.places?.PlaceAutocompleteElement) {
-            const el = new google.maps.places.PlaceAutocompleteElement({ types: ['address'], componentRestrictions: { country: 'us' }, fields: ['formatted_address','name','place_id'] });
-            el.setAttribute('placeholder', 'Start typing address...');
-            container.innerHTML = ''; container.appendChild(el); placeAutocomplete = el;
-            el.addEventListener('gmp-placeselect', (e)=> status('Address selected', true));
-            status('Address autocomplete ready', true);
-          } else if (google.maps?.places?.Autocomplete) {
-            const input = document.createElement('input'); input.className='input'; input.id='address'; input.placeholder='Start typing address...';
-            container.innerHTML=''; container.appendChild(input);
-            const ac = new google.maps.places.Autocomplete(input, { types:['address'], componentRestrictions:{ country:'us' }, fields:['formatted_address','name'] });
-            ac.addListener('place_changed', ()=> status('Address selected', true));
-            status('Address autocomplete ready (legacy)', true);
-          } else { renderFallback(container); status('Places API not available. Manual entry.', false); }
-        } catch(e) { renderFallback(container); status('Error initializing Places. Manual entry.', false); }
-      };
-      document.head.appendChild(s);
+          controller?.abort(); controller = new AbortController();
+          const data = await fetchJSON(`/api/places/autocomplete?q=${encodeURIComponent(q)}&limit=8`);
+          const suggestions = (data && data.data) || [];
+          if (!Array.isArray(suggestions) || suggestions.length === 0) { list.style.display='none'; list.innerHTML=''; return; }
+          list.innerHTML = suggestions.map(s => `<div data-id="${s.placeId}" style="padding:10px; border-bottom:1px solid #ddd; cursor:pointer;">${s.text}</div>`).join('');
+          list.style.display = 'block';
+        } catch (e) {
+          list.style.display='none'; list.innerHTML='';
+        }
+      });
+
+      list.addEventListener('click', async (e) => {
+        const target = e.target; if (!(target instanceof HTMLElement)) return;
+        const id = target.getAttribute('data-id'); if (!id) return;
+        try {
+          const data = await fetchJSON(`/api/places/details?placeId=${encodeURIComponent(id)}`);
+          const d = data && data.data; if (d?.address) { input.value = d.address; status('Address selected', true); }
+        } catch (e) { /* ignore */ }
+        list.style.display='none'; list.innerHTML='';
+      });
     }
 
     function renderFallback(container) {

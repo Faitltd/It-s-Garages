@@ -11,15 +11,27 @@ class GoogleApiService {
   private usage: GoogleApiUsage;
   private streetViewApiKey: string;
   private mapsApiKey: string;
+  private placesApiKey: string;
 
   constructor() {
     try {
       this.streetViewApiKey = this.getSecureApiKey('GOOGLE_STREET_VIEW_API_KEY');
       this.mapsApiKey = this.getSecureApiKey('GOOGLE_MAPS_API_KEY');
     } catch (error) {
-      console.warn('Google API keys not configured, using fallback mode');
+      console.warn('Google API keys not configured (Street View / Maps), using fallback mode');
       this.streetViewApiKey = '';
       this.mapsApiKey = '';
+    }
+
+    try {
+      // Places API key is separate and used only server-side via proxy
+      this.placesApiKey = this.getSecureApiKey('GOOGLE_PLACES_API_KEY');
+    } catch (error) {
+      // If Places key is not provided, we can fallback to mapsApiKey if it exists and is permitted
+      this.placesApiKey = this.mapsApiKey || '';
+      if (!this.placesApiKey) {
+        console.warn('Google Places API key not configured; Places proxy will be unavailable');
+      }
     }
 
     this.usage = {
@@ -100,6 +112,43 @@ class GoogleApiService {
 
     this.incrementUsage('maps');
     return this.mapsApiKey;
+  }
+
+  /**
+   * Places Autocomplete (server-side proxy)
+   */
+  public async placesAutocomplete(input: string, limit: number = 8): Promise<Array<{ text: string; placeId: string }>> {
+    if (!this.placesApiKey) throw createError('Places API not configured', 500);
+    if (!this.checkUsageLimit('maps')) throw createError('Daily Google API limit exceeded', 429);
+
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=address&components=country:us&key=${this.placesApiKey}`;
+    const resp = await fetch(url);
+    const data = await resp.json() as any;
+    this.incrementUsage('maps');
+
+    const predictions = Array.isArray(data?.predictions) ? data.predictions : [];
+    return predictions.slice(0, limit).map((p: any) => ({ text: p.description, placeId: p.place_id }));
+  }
+
+  /**
+   * Place Details (server-side proxy)
+   */
+  public async placeDetails(placeId: string): Promise<{ address: string; lat?: number; lng?: number } | null> {
+    if (!this.placesApiKey) throw createError('Places API not configured', 500);
+    if (!this.checkUsageLimit('maps')) throw createError('Daily Google API limit exceeded', 429);
+
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=formatted_address,geometry&key=${this.placesApiKey}`;
+    const resp = await fetch(url);
+    const data = await resp.json() as any;
+    this.incrementUsage('maps');
+
+    const r = data?.result;
+    if (!r) return null;
+    return {
+      address: r.formatted_address || '',
+      lat: r.geometry?.location?.lat,
+      lng: r.geometry?.location?.lng,
+    };
   }
 
   /**
