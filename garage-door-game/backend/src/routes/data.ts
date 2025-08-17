@@ -73,7 +73,7 @@ router.post('/submit', authenticate, (req: any, res, next) => {
       INSERT INTO simple_data_submissions (
         user_id, address, garage_door_size, notes, created_at
       ) VALUES (?, ?, ?, ?, datetime('now'))
-    `, [userId, address.trim(), firstDoor.size.trim(), `${doors.length} doors total`], function(err) {
+    `, [userId, address.trim(), firstDoor.size.trim(), `${doors.length} doors total`], function(err: any) {
       if (err) {
         console.error('Database insert error:', err);
         return res.status(500).json({ success: false, error: 'Database error' });
@@ -88,7 +88,7 @@ router.post('/submit', authenticate, (req: any, res, next) => {
             data_submissions = data_submissions + 1,
             updated_at = datetime('now')
         WHERE id = ?
-      `, [totalPoints, userId], (updateErr) => {
+      `, [totalPoints, userId], (updateErr: any) => {
         if (updateErr) {
           console.error('User update error:', updateErr);
           // Still return success since the submission was saved
@@ -135,7 +135,7 @@ router.get('/my-submissions', authenticate, (req: any, res, next) => {
       WHERE user_id = ?
       ORDER BY created_at DESC
       LIMIT ? OFFSET ?
-    `, [userId, limit, offset], (err, submissions) => {
+    `, [userId, limit, offset], (err: any, submissions: any[]) => {
       if (err) {
         return res.status(500).json({ success: false, error: 'Failed to fetch submissions' });
       }
@@ -143,7 +143,7 @@ router.get('/my-submissions', authenticate, (req: any, res, next) => {
       // Get total count
       const db2 = getDb();
       if (!db2) return res.status(503).json({ success: false, error: 'Database not ready' });
-      return db2.get('SELECT COUNT(*) as total FROM data_submissions WHERE user_id = ?', [userId], (err, row: any) => {
+      return db2.get('SELECT COUNT(*) as total FROM data_submissions WHERE user_id = ?', [userId], (err: any, row: any) => {
         if (err) {
           return res.status(500).json({ success: false, error: 'Failed to get count' });
         }
@@ -191,7 +191,7 @@ router.get('/all', authenticate, (req: any, res, next) => {
       JOIN users u ON ds.user_id = u.id
       ORDER BY ds.created_at DESC
       LIMIT ? OFFSET ?
-    `, [limit, offset], (err, submissions) => {
+    `, [limit, offset], (err: any, submissions: any[]) => {
       if (err) {
         return res.status(500).json({ success: false, error: 'Failed to fetch submissions' });
       }
@@ -199,7 +199,7 @@ router.get('/all', authenticate, (req: any, res, next) => {
       // Get total count
       const db3 = getDb();
       if (!db3) return res.status(503).json({ success: false, error: 'Database not ready' });
-      return db3.get('SELECT COUNT(*) as total FROM data_submissions', [], (err, row: any) => {
+      return db3.get('SELECT COUNT(*) as total FROM data_submissions', [], (err: any, row: any) => {
         if (err) {
           return res.status(500).json({ success: false, error: 'Failed to get count' });
         }
