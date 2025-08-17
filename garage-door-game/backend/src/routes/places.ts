@@ -15,11 +15,15 @@ if (process.env.FRONTEND_ORIGIN) {
 }
 
 // Simple origin check middleware
-function originCheck(req: Request, res: Response, next: NextFunction) {
-  const origin = (req.headers.origin || req.get('referer') || '').toString().replace(/\/$/, '');
-  if (!origin) return res.status(403).json({ success: false, error: 'Origin required' });
-  for (const allowed of ALLOWED_ORIGINS) {
-    if (origin.startsWith(allowed)) return next();
+function originCheck(req: Request, res: Response, next: NextFunction): Response | void {
+  const originHeader = (req.headers.origin || req.get('referer') || '').toString().replace(/\/$/, '');
+  if (!originHeader) return res.status(403).json({ success: false, error: 'Origin required' });
+  // Support comma-separated FRONTEND_ORIGIN values (e.g., custom domain + run.app URL)
+  const dynamicAllowed = new Set<string>(ALLOWED_ORIGINS);
+  const envOrigins = (process.env.FRONTEND_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);
+  for (const o of envOrigins) dynamicAllowed.add(o);
+  for (const allowed of dynamicAllowed) {
+    if (originHeader.startsWith(allowed)) return next();
   }
   return res.status(403).json({ success: false, error: 'Origin not allowed' });
 }
@@ -33,21 +37,21 @@ const limiter = rateLimit({
 });
 
 // Validate query string for autocomplete
-function validateAutocompleteQuery(req: Request, res: Response, next: NextFunction) {
+function validateAutocompleteQuery(req: Request, res: Response, next: NextFunction): Response | void {
   const q = (req.query.q as string || '').trim();
   const limit = Math.min(parseInt((req.query.limit as string) || '8', 10), 10);
   if (!q || q.length < 3) return res.status(400).json({ success: false, error: 'Query must be at least 3 characters' });
   if (!/^[\p{L}\p{N}\s,.'-]+$/u.test(q)) return res.status(400).json({ success: false, error: 'Invalid characters in query' });
   (req as any).autocompleteLimit = isNaN(limit) ? 8 : limit;
-  next();
+  return next();
 }
 
 // Validate placeId input
-function validateDetailsQuery(req: Request, res: Response, next: NextFunction) {
+function validateDetailsQuery(req: Request, res: Response, next: NextFunction): Response | void {
   const placeId = (req.query.placeId as string || '').trim();
   if (!placeId) return res.status(400).json({ success: false, error: 'placeId is required' });
   if (!/^[A-Za-z0-9_-]+$/.test(placeId)) return res.status(400).json({ success: false, error: 'Invalid placeId' });
-  next();
+  return next();
 }
 
 router.get('/autocomplete', originCheck, limiter, validateAutocompleteQuery, async (req: Request, res: Response) => {
