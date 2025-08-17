@@ -59,11 +59,11 @@ router.get('/autocomplete', originCheck, limiter, validateAutocompleteQuery, asy
     const q = (req.query.q as string).trim();
     const limit = (req as any).autocompleteLimit as number;
     const suggestions = await googleApiService.placesAutocomplete(q, limit);
-    res.json({ success: true, data: suggestions });
+    return res.json({ success: true, data: suggestions });
   } catch (err: any) {
     const msg = err?.message || 'Autocomplete failed';
     const code = typeof err?.status === 'number' ? err.status : 500;
-    res.status(code).json({ success: false, error: msg });
+    return res.status(code).json({ success: false, error: msg });
   }
 });
 
@@ -72,11 +72,11 @@ router.get('/details', originCheck, limiter, validateDetailsQuery, async (req: R
     const placeId = (req.query.placeId as string).trim();
     const details = await googleApiService.placeDetails(placeId);
     if (!details) return res.status(404).json({ success: false, error: 'Not found' });
-    res.json({ success: true, data: details });
+    return res.json({ success: true, data: details });
   } catch (err: any) {
     const msg = err?.message || 'Details failed';
     const code = typeof err?.status === 'number' ? err.status : 500;
-    res.status(code).json({ success: false, error: msg });
+    return res.status(code).json({ success: false, error: msg });
   }
 });
 
