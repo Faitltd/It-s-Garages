@@ -3,7 +3,7 @@ import { authenticate, AuthenticatedRequest } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import { auditDataAccess } from '../middleware/auditMiddleware';
 import { googleApiService } from '../services/googleApiService';
-import { db } from '../config/database';
+import { getDb } from '../config/dbAccessor';
 import Joi from 'joi';
 import {
   getRandomCentennialAddress,
@@ -417,6 +417,8 @@ router.post('/:id/verify',
 // Database functions
 async function saveDataEntry(data: any): Promise<number> {
   return new Promise((resolve, reject) => {
+    const db = getDb();
+    if (!db) return reject(new Error('Database not ready'));
     const stmt = db.prepare(`
       INSERT INTO data_submissions (
         user_id, address, latitude, longitude, address_source,
@@ -469,6 +471,8 @@ async function saveDataEntry(data: any): Promise<number> {
 
 async function getDataEntries(limit: number, offset: number): Promise<any[]> {
   return new Promise((resolve, reject) => {
+    const db = getDb();
+    if (!db) return reject(new Error('Database not ready'));
     const stmt = db.prepare(`
       SELECT
         ds.*,
@@ -493,7 +497,9 @@ async function getDataEntries(limit: number, offset: number): Promise<any[]> {
 
 async function getDataEntriesCount(): Promise<number> {
   return new Promise((resolve, reject) => {
-    db.get('SELECT COUNT(*) as count FROM data_submissions', (err, row: any) => {
+    const db = getDb();
+    if (!db) return reject(new Error('Database not ready'));
+    db.get('SELECT COUNT(*) as count FROM data_submissions', (err: any, row: any) => {
       if (err) {
         reject(err);
         return;
@@ -505,6 +511,8 @@ async function getDataEntriesCount(): Promise<number> {
 
 async function getDataEntryById(id: number): Promise<any> {
   return new Promise((resolve, reject) => {
+    const db = getDb();
+    if (!db) return reject(new Error('Database not ready'));
     const stmt = db.prepare(`
       SELECT 
         gde.*,
@@ -564,6 +572,8 @@ async function updateDataEntry(id: number, userId: number, data: DataEntry): Pro
 
 async function verifyDataEntry(id: number, verifierId: number, verified: boolean, notes?: string): Promise<void> {
   return new Promise((resolve, reject) => {
+    const db = getDb();
+    if (!db) return reject(new Error('Database not ready'));
     const stmt = db.prepare(`
       UPDATE garage_door_data_entries 
       SET verified_by_user_id = ?, verified_at = CURRENT_TIMESTAMP, 

@@ -1,4 +1,4 @@
-import { db } from '../config/database';
+import { getDb } from '../config/dbAccessor';
 import { GoogleApiService } from './googleApiService';
 
 export interface CentennialAddress {
@@ -24,6 +24,8 @@ export interface CentennialAddress {
  */
 export const getRandomCentennialAddress = (): Promise<CentennialAddress | null> => {
   return new Promise((resolve, reject) => {
+    const db = getDb();
+    if (!db) return reject(new Error('Database not ready'));
     const stmt = db.prepare(`
       SELECT * FROM centennial_addresses
       WHERE address IS NOT NULL
@@ -49,6 +51,8 @@ export const getRandomCentennialAddress = (): Promise<CentennialAddress | null> 
  */
 export const getRandomCentennialAddressExcluding = (excludeId: number): Promise<CentennialAddress | null> => {
   return new Promise((resolve, reject) => {
+    const db = getDb();
+    if (!db) return reject(new Error('Database not ready'));
     const stmt = db.prepare(`
       SELECT * FROM centennial_addresses
       WHERE address IS NOT NULL
@@ -75,6 +79,8 @@ export const getRandomCentennialAddressExcluding = (excludeId: number): Promise<
  */
 export const markAddressAsNotVisible = (addressId: number): Promise<void> => {
   return new Promise((resolve, reject) => {
+    const db = getDb();
+    if (!db) return reject(new Error('Database not ready'));
     const stmt = db.prepare(`
       UPDATE centennial_addresses
       SET garage_not_visible = 1, updated_at = CURRENT_TIMESTAMP
@@ -98,6 +104,8 @@ export const markAddressAsNotVisible = (addressId: number): Promise<void> => {
  */
 export const searchCentennialAddresses = (searchTerm: string, limit: number = 10): Promise<CentennialAddress[]> => {
   return new Promise((resolve, reject) => {
+    const db = getDb();
+    if (!db) return reject(new Error('Database not ready'));
     const stmt = db.prepare(`
       SELECT * FROM centennial_addresses 
       WHERE address IS NOT NULL 
@@ -124,6 +132,8 @@ export const searchCentennialAddresses = (searchTerm: string, limit: number = 10
  */
 export const getCentennialAddressById = (id: number): Promise<CentennialAddress | null> => {
   return new Promise((resolve, reject) => {
+    const db = getDb();
+    if (!db) return reject(new Error('Database not ready'));
     const stmt = db.prepare(`
       SELECT * FROM centennial_addresses 
       WHERE id = ?
@@ -145,6 +155,8 @@ export const getCentennialAddressById = (id: number): Promise<CentennialAddress 
  */
 export const updateCentennialAddressStreetView = (id: number, streetViewUrl: string): Promise<void> => {
   return new Promise((resolve, reject) => {
+    const db = getDb();
+    if (!db) return reject(new Error('Database not ready'));
     const stmt = db.prepare(`
       UPDATE centennial_addresses 
       SET street_view_url = ?, updated_at = CURRENT_TIMESTAMP
@@ -167,6 +179,8 @@ export const updateCentennialAddressStreetView = (id: number, streetViewUrl: str
  */
 export const getCentennialAddressesWithGarageDoors = (limit: number = 50): Promise<CentennialAddress[]> => {
   return new Promise((resolve, reject) => {
+    const db = getDb();
+    if (!db) return reject(new Error('Database not ready'));
     const stmt = db.prepare(`
       SELECT * FROM centennial_addresses 
       WHERE has_garage_door = 1
