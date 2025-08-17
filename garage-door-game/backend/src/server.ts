@@ -7,10 +7,7 @@ console.log('🔄 Loading environment variables...');
 dotenv.config();
 console.log('✅ Environment variables loaded');
 
-console.log('🔄 Importing database module...');
-// Import database and initialize
-import { initializeDatabase } from './config/database';
-console.log('✅ Database module imported');
+// Database will be imported dynamically later to avoid blocking startup
 
 console.log('🔄 Importing app module...');
 import { createApp } from './app';
@@ -41,7 +38,8 @@ const startServer = async () => {
 
     // Initialize database asynchronously (do not block port readiness)
     console.log('🔄 Initializing database (async)...');
-    initializeDatabase()
+    import('./config/database')
+      .then(({ initializeDatabase }) => initializeDatabase())
       .then(() => console.log('✅ Database initialized successfully'))
       .catch((err) => {
         console.error('❌ Database initialization failed (continuing to serve non-DB endpoints):', err);

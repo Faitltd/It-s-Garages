@@ -1,0 +1,20 @@
+# Ignore local development artifacts so container builds correct Linux binaries
+node_modules
+npm-debug.log*
+yarn-error.log
+
+# Do not include local build output; build inside the image
+/dist
+/coverage
+
+# Do not include local environment files or secrets
+.env
+.env.*
+
+# VCS and editor
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+
