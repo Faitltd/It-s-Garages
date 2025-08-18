@@ -35,7 +35,7 @@ export const getRandomCentennialAddress = (): Promise<CentennialAddress | null> 
       LIMIT 1
     `);
 
-    stmt.get([], (err, row) => {
+    stmt.get([], (err: any, row: any) => {
       if (err) {
         console.error('Error getting random Centennial address:', err);
         reject(err);
@@ -63,7 +63,7 @@ export const getRandomCentennialAddressExcluding = (excludeId: number): Promise<
       LIMIT 1
     `);
 
-    stmt.get([excludeId], (err, row) => {
+    stmt.get([excludeId], (err: any, row: any) => {
       if (err) {
         console.error('Error getting random Centennial address:', err);
         reject(err);
@@ -87,7 +87,7 @@ export const markAddressAsNotVisible = (addressId: number): Promise<void> => {
       WHERE id = ?
     `);
 
-    stmt.run([addressId], function(err) {
+    stmt.run([addressId], function(this: any, err: any) {
       if (err) {
         console.error('Error marking address as not visible:', err);
         reject(err);
@@ -116,7 +116,7 @@ export const searchCentennialAddresses = (searchTerm: string, limit: number = 10
     `);
 
     const searchPattern = `%${searchTerm}%`;
-    stmt.all([searchPattern, searchPattern, limit], (err, rows) => {
+    stmt.all([searchPattern, searchPattern, limit], (err: any, rows: any[]) => {
       if (err) {
         console.error('Error searching Centennial addresses:', err);
         reject(err);
@@ -139,7 +139,7 @@ export const getCentennialAddressById = (id: number): Promise<CentennialAddress 
       WHERE id = ?
     `);
 
-    stmt.get([id], (err, row) => {
+    stmt.get([id], (err: any, row: any) => {
       if (err) {
         console.error('Error getting Centennial address by ID:', err);
         reject(err);
@@ -163,7 +163,7 @@ export const updateCentennialAddressStreetView = (id: number, streetViewUrl: str
       WHERE id = ?
     `);
 
-    stmt.run([streetViewUrl, id], (err) => {
+    stmt.run([streetViewUrl, id], (err: any) => {
       if (err) {
         console.error('Error updating Centennial address Street View URL:', err);
         reject(err);
@@ -190,7 +190,7 @@ export const getCentennialAddressesWithGarageDoors = (limit: number = 50): Promi
       LIMIT ?
     `);
 
-    stmt.all([limit], (err, rows) => {
+    stmt.all([limit], (err: any, rows: any[]) => {
       if (err) {
         console.error('Error getting Centennial addresses with garage doors:', err);
         reject(err);
@@ -269,8 +269,10 @@ export const getCentennialAddressStats = (): Promise<{
     let completed = 0;
     const results: number[] = [];
 
+    const db = getDb();
+    if (!db) return reject(new Error('Database not ready'));
     queries.forEach((query, index) => {
-      db.get(query, [], (err, row: any) => {
+      db.get(query, [], (err: any, row: any) => {
         if (err) {
           reject(err);
           return;

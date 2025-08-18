@@ -457,7 +457,7 @@ async function saveDataEntry(data: any): Promise<number> {
       data.notes || null,
       data.streetViewUrl || null,
       data.confidence_level
-    ], function(err) {
+    ], function(this: any, err: any) {
       if (err) {
         reject(err);
         return;
@@ -483,7 +483,7 @@ async function getDataEntries(limit: number, offset: number): Promise<any[]> {
       LIMIT ? OFFSET ?
     `);
 
-    stmt.all([limit, offset], (err, rows) => {
+    stmt.all([limit, offset], (err: any, rows: any[]) => {
       if (err) {
         reject(err);
         return;
@@ -523,7 +523,7 @@ async function getDataEntryById(id: number): Promise<any> {
       WHERE gde.id = ?
     `);
 
-    stmt.get([id], (err, row) => {
+    stmt.get([id], (err: any, row: any) => {
       if (err) {
         reject(err);
         return;
@@ -539,6 +539,8 @@ async function updateDataEntry(id: number, userId: number, data: DataEntry): Pro
   return new Promise((resolve, reject) => {
     const doorSize = `${data.garage_door_width}x${data.garage_door_height} feet`;
     
+    const db = getDb();
+    if (!db) return reject(new Error('Database not ready'));
     const stmt = db.prepare(`
       UPDATE data_submissions
       SET garage_door_count = ?, garage_door_width = ?, garage_door_height = ?,
@@ -558,7 +560,7 @@ async function updateDataEntry(id: number, userId: number, data: DataEntry): Pro
       data.confidence_level,
       id,
       userId
-    ], function(err) {
+    ], function(this: any, err: any) {
       if (err) {
         reject(err);
         return;
@@ -581,7 +583,7 @@ async function verifyDataEntry(id: number, verifierId: number, verified: boolean
       WHERE id = ?
     `);
 
-    stmt.run([verifierId, notes || null, verified ? 1 : 0, id], function(err) {
+    stmt.run([verifierId, notes || null, verified ? 1 : 0, id], function(this: any, err: any) {
       if (err) {
         reject(err);
         return;
@@ -631,7 +633,9 @@ router.get('/export',
       `;
 
       const entries = await new Promise<any[]>((resolve, reject) => {
-        db.all(query, [], (err, rows) => {
+        const db = getDb();
+        if (!db) return reject(new Error('Database not ready'));
+        db.all(query, [], (err: any, rows: any[]) => {
           if (err) reject(err);
           else resolve(rows || []);
         });
@@ -652,7 +656,9 @@ router.get('/export',
       `;
 
       const stats = await new Promise<any>((resolve, reject) => {
-        db.get(statsQuery, [], (err, row) => {
+        const db = getDb();
+        if (!db) return reject(new Error('Database not ready'));
+        db.get(statsQuery, [], (err: any, row: any) => {
           if (err) reject(err);
           else resolve(row);
         });
