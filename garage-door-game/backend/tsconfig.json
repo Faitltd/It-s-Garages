@@ -3,6 +3,7 @@
     "target": "ES2020",
     "module": "commonjs",
     "lib": ["ES2020"],
+    "types": ["node", "express", "cors", "multer", "morgan", "jsonwebtoken"],
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
@@ -26,7 +27,9 @@
   "exclude": [
     "node_modules",
     "dist",
-    "**/*.test.ts"
+    "**/*.test.ts",
+    "src/tests/**/*",
+    "**/__tests__/**/*"
   ],
   "ts-node": {
     "esm": false,

@@ -201,7 +201,7 @@ export const initializeDatabase = (): Promise<void> => {
       // Leaderboard view (virtual table)
       db.run(`
         CREATE VIEW IF NOT EXISTS leaderboard AS
-        SELECT 
+        SELECT
           u.id,
           u.username,
           u.total_points,
@@ -358,6 +358,7 @@ export const initializeDatabase = (): Promise<void> => {
           -- Standard Specifications
           standard_garage_type TEXT,          -- Most common garage type in development
           standard_door_size TEXT,            -- Most common door size
+
           confidence REAL DEFAULT 0.9,       -- High confidence for tract homes
 
           -- Metadata
@@ -372,8 +373,6 @@ export const initializeDatabase = (): Promise<void> => {
       db.run(`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`);
       db.run(`CREATE INDEX IF NOT EXISTS idx_jobs_user_id ON jobs(user_id)`);
       db.run(`CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)`);
-      db.run(`CREATE INDEX IF NOT EXISTS idx_game_sessions_user_id ON game_sessions(user_id)`);
-      db.run(`CREATE INDEX IF NOT EXISTS idx_game_sessions_job_id ON game_sessions(job_id)`);
       db.run(`CREATE INDEX IF NOT EXISTS idx_data_submissions_user_id ON data_submissions(user_id)`);
 
       // New indexes for garage door data
@@ -403,6 +402,7 @@ export const initializeDatabase = (): Promise<void> => {
           -- Address and Location
           address TEXT NOT NULL,
           latitude REAL,
+
           longitude REAL,
           street_view_url TEXT,
 
@@ -461,6 +461,44 @@ export const initializeDatabase = (): Promise<void> => {
       `);
 
 
+
+
+      // Game sessions table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS game_sessions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          job_id INTEGER,
+          guess_door_count INTEGER,
+          guess_door_width REAL,
+          guess_door_height REAL,
+          guess_garage_type TEXT,
+          is_correct BOOLEAN DEFAULT 0,
+          points_earned INTEGER DEFAULT 0,
+          time_taken INTEGER,
+          difficulty VARCHAR(20) DEFAULT 'medium',
+          location_lat REAL,
+          location_lng REAL,
+          location_address TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users (id),
+          FOREIGN KEY (job_id) REFERENCES jobs (id)
+        )
+      `);
+
+      // Validation game results (aggregated results per data entry)
+      db.run(`
+        CREATE TABLE IF NOT EXISTS validation_game_results (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          data_entry_id INTEGER NOT NULL,
+          user_id INTEGER,
+          accuracy REAL,
+          points_earned INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (data_entry_id) REFERENCES data_entries (id),
+          FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+      `);
 
       // Indexes for data entries
       db.run(`CREATE INDEX IF NOT EXISTS idx_garage_door_data_entries_user_id ON garage_door_data_entries(user_id)`);
