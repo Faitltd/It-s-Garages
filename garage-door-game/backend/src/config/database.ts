@@ -545,10 +545,15 @@ export const initializeDatabase = (): Promise<void> => {
       `);
 
       // Index for game locations
-      db.run(`CREATE INDEX IF NOT EXISTS idx_game_locations_lat_lng ON game_locations(latitude, longitude)`);
-
-      console.log('Database schema initialized successfully');
-      resolve();
+      db.run(`CREATE INDEX IF NOT EXISTS idx_game_locations_lat_lng ON game_locations(latitude, longitude)`, (err) => {
+        if (err) {
+          console.error('Error creating index idx_game_locations_lat_lng:', err);
+          reject(err);
+          return;
+        }
+        console.log('Database schema initialized successfully');
+        resolve();
+      });
     });
 
     db.on('error', (err) => {
