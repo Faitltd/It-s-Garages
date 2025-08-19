@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚪 Garage Door Data Entry - It's Garages</title>
+    
+    <!-- Google Fonts for 8-bit aesthetic -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    
+    <!-- Google Places API - Replace YOUR_GOOGLE_PLACES_API_KEY with your actual API key -->
+    <!-- Get your API key from: https://developers.google.com/maps/documentation/places/web-service/get-api-key -->
+    <!-- Using the new Places API with loading=async for better performance -->
+    <script>
+        // Configuration - Set your API key here
+        const GOOGLE_PLACES_API_KEY = 'YOUR_GOOGLE_PLACES_API_KEY';
+
+        // Only load Google Places API if we have a valid API key
+        if (GOOGLE_PLACES_API_KEY && GOOGLE_PLACES_API_KEY !== 'YOUR_GOOGLE_PLACES_API_KEY') {
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_PLACES_API_KEY}&libraries=places&loading=async&callback=initGooglePlaces`;
+            script.async = true;
+            script.defer = true;
+            script.onerror = function() {
+                console.error('Failed to load Google Places API');
+                window.handleGooglePlacesError('Failed to load Google Places API script');
+            };
+            document.head.appendChild(script);
+        } else {
+            // Initialize without Google Places API - error handling will be done in DOMContentLoaded
+            console.log('Google Places API key not configured - using manual address entry');
+        }
+    </script>
+    
+    <style>
+        /* 8-bit Retro Base Styles - Mobile First */
+        * {
+            box-sizing: border-box;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        body {
+            font-family: 'Press Start 2P', monospace;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98D8E8 50%, #87CEEB 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 16px;
+            position: relative;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        /* Floating clouds animation */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                radial-gradient(ellipse 60px 40px at 100px 50px, #fff 40%, transparent 50%),
+                radial-gradient(ellipse 80px 50px at 300px 120px, #fff 40%, transparent 50%),
+                radial-gradient(ellipse 70px 45px at 500px 80px, #fff 40%, transparent 50%);
+            animation: cloudsFloat 30s linear infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes cloudsFloat {
+            0% { transform: translateX(-100px); }
+            100% { transform: translateX(calc(100vw + 100px)); }
+        }
+
+        /* Main container */
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Mario-style text box */
+        .text-box {
+            background: linear-gradient(45deg, #228B22, #006400);
+            border: 4px solid #fff;
+            border-radius: 0;
+            padding: 20px 16px;
+            margin-bottom: 20px;
+            position: relative;
+            text-align: center;
+            box-shadow:
+                inset -4px -4px 0 #1a5f1a,
+                inset 4px 4px 0 #32cd32,
+                4px 4px 0 #000;
+            animation: textBoxPop 0.3s ease-out;
+        }
+
+        @keyframes textBoxPop {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .text-box h1 {
+            color: #fff;
+            text-align: center;
+            margin: 0 0 16px 0;
+            text-shadow: 2px 2px 0 #000;
+            font-size: 16px;
+        }
+
+        .text-box p {
+            color: #fff;
+            text-align: center;
+            margin: 0;
+            font-size: 10px;
+        }
+
+        /* Form styles */
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            color: #fff;
+            font-size: 12px;
+            margin-bottom: 12px;
+            text-shadow: 2px 2px 0 #000;
+            text-align: center;
+        }
+
+        /* Input field styles */
+        .input-field {
+            width: 100%;
+            padding: 16px;
+            border: 4px solid #000;
+            border-radius: 0;
+            background: #fff;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 14px;
+            text-align: center;
+            min-height: 56px;
+            box-shadow:
+                inset -2px -2px 0 #666,
+                inset 2px 2px 0 #fff,
+                2px 2px 0 #000;
+        }
+
+        .input-field:focus {
+            outline: none;
+            background: #fffacd;
+            box-shadow:
+                inset -2px -2px 0 #666,
+                inset 2px 2px 0 #fff,
+                2px 2px 0 #000,
+                0 0 10px #ffd700;
+        }
+
+        /* Hide Google Maps error overlays and warnings */
+        .gm-err-container,
+        .gm-err-autocomplete,
+        .dismissButton,
+        [data-value="InvalidKey"],
+        .gm-style .gm-err-container {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+        }
+
+        /* Hide the exclamation point overlay */
+        .gm-style .gm-err-icon {
+            display: none !important;
+        }
+
+        /* Address input container to handle Google Places element */
+        .address-input-container {
+            position: relative;
+            width: 100%;
+        }
+
+        /* Style for the new Google Places Autocomplete Element */
+        gmp-place-autocomplete {
+            width: 100% !important;
+            font-family: 'Press Start 2P', monospace !important;
+        }
+
+        gmp-place-autocomplete input {
+            width: 100% !important;
+            padding: 16px !important;
+            border: 4px solid #000 !important;
+            border-radius: 0 !important;
+            background: #fff !important;
+            font-family: 'Press Start 2P', monospace !important;
+            font-size: 14px !important;
+            text-align: center !important;
+            min-height: 56px !important;
+            box-shadow:
+                inset -2px -2px 0 #666,
+                inset 2px 2px 0 #fff,
+                2px 2px 0 #000 !important;
+        }
+
+        gmp-place-autocomplete input:focus {
+            outline: none !important;
+            background: #fffacd !important;
+            box-shadow:
+                inset -2px -2px 0 #666,
+                inset 2px 2px 0 #fff,
+                2px 2px 0 #000,
+                0 0 10px #ffd700 !important;
+        }
+
+        /* Fallback styling for regular input when API is not available */
+        .address-fallback {
+            width: 100%;
+            padding: 16px;
+            border: 4px solid #000;
+            border-radius: 0;
+            background: #fff;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 14px;
+            text-align: center;
+            min-height: 56px;
+            box-shadow:
+                inset -2px -2px 0 #666,
+                inset 2px 2px 0 #fff,
+                2px 2px 0 #000;
+        }
+
+        .address-fallback:focus {
+            outline: none;
+            background: #fffacd;
+            box-shadow:
+                inset -2px -2px 0 #666,
+                inset 2px 2px 0 #fff,
+                2px 2px 0 #000,
+                0 0 10px #ffd700;
+        }
+
+        /* Autocomplete dropdown styling for legacy API */
+        .pac-container {
+            font-family: 'Press Start 2P', monospace !important;
+            font-size: 10px !important;
+            border: 4px solid #000 !important;
+            border-radius: 0 !important;
+            box-shadow: 4px 4px 0 #000 !important;
+            z-index: 9999 !important;
+        }
+
+        .pac-item {
+            padding: 12px !important;
+            border-bottom: 2px solid #000 !important;
+        }
+
+        /* API status indicator */
+        .api-status {
+            background: linear-gradient(45deg, #FFA500, #FF8C00);
+            color: #000;
+            border: 2px solid #fff;
+            padding: 8px 12px;
+            text-align: center;
+            margin-bottom: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            text-shadow: 1px 1px 0 #fff;
+            box-shadow: 2px 2px 0 #000;
+        }
+
+        .api-status.success {
+            background: linear-gradient(45deg, #32CD32, #228B22);
+            color: #fff;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        .api-status.error {
+            background: linear-gradient(45deg, #ff4444, #cc0000);
+            color: #fff;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        /* Button grid for size selection */
+        .size-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        @media (min-width: 480px) {
+            .size-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Choice buttons */
+        .choice-btn {
+            background: linear-gradient(45deg, #fff, #f0f0f0);
+            border: 4px solid #000;
+            padding: 16px 12px;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            position: relative;
+            text-align: center;
+            min-height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            box-shadow: 4px 4px 0 #000;
+            font-family: 'Press Start 2P', monospace;
+        }
+
+        .choice-btn:hover {
+            background: linear-gradient(45deg, #ffeb3b, #ffc107);
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0 #000;
+        }
+
+        .choice-btn.selected {
+            background: linear-gradient(45deg, #4caf50, #388e3c);
+            color: #fff;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        /* Custom size inputs */
+        .custom-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .custom-inputs input {
+            padding: 12px;
+            border: 4px solid #000;
+            border-radius: 0;
+            background: #fff;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 12px;
+            text-align: center;
+            box-shadow: inset -2px -2px 0 #666, inset 2px 2px 0 #fff;
+        }
+
+        /* Submit button */
+        .submit-btn {
+            width: 100%;
+            padding: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #ff5252);
+            color: #fff;
+            border: none;
+            border-radius: 0;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 14px;
+            cursor: pointer;
+            text-shadow: 1px 1px 0 #000;
+            min-height: 60px;
+            box-shadow:
+                inset -4px -4px 0 rgba(0,0,0,0.3),
+                inset 4px 4px 0 rgba(255,255,255,0.3),
+                4px 4px 0 #000;
+            transition: all 0.1s ease;
+        }
+
+        .submit-btn:hover {
+            transform: translate(2px, 2px);
+            box-shadow:
+                inset -2px -2px 0 rgba(0,0,0,0.3),
+                inset 2px 2px 0 rgba(255,255,255,0.3),
+                2px 2px 0 #000;
+        }
+
+        .submit-btn:active {
+            transform: translate(4px, 4px);
+            box-shadow:
+                inset -1px -1px 0 rgba(0,0,0,0.3),
+                inset 1px 1px 0 rgba(255,255,255,0.3);
+        }
+
+        /* Success/Error messages */
+        .message {
+            padding: 16px;
+            margin-bottom: 20px;
+            border: 4px solid #000;
+            text-align: center;
+            font-size: 10px;
+            box-shadow: 4px 4px 0 #000;
+        }
+
+        .message.success {
+            background: linear-gradient(45deg, #4caf50, #388e3c);
+            color: #fff;
+        }
+
+        .message.error {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+            color: #fff;
+        }
+
+        /* Hidden class */
+        .hidden {
+            display: none;
+        }
+
+        /* Loading state */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* Footer info */
+        .info-footer {
+            background: linear-gradient(45deg, #228B22, #006400);
+            border: 4px solid #fff;
+            border-radius: 0;
+            padding: 16px;
+            margin-top: 20px;
+            text-align: center;
+            box-shadow:
+                inset -4px -4px 0 #1a5f1a,
+                inset 4px 4px 0 #32cd32,
+                4px 4px 0 #000;
+        }
+
+        .info-footer p {
+            color: #fff;
+            font-size: 10px;
+            margin: 8px 0;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        /* Responsive improvements */
+        @media (max-width: 480px) {
+            body {
+                padding: 8px;
+                font-size: 10px;
+            }
+
+            .text-box {
+                padding: 16px 12px;
+                margin-bottom: 16px;
+            }
+
+            .choice-btn {
+                padding: 20px 12px;
+                font-size: 10px;
+                min-height: 64px;
+            }
+
+            .input-field {
+                padding: 18px 12px;
+                font-size: 16px; /* Prevents zoom on iOS */
+            }
+
+            .submit-btn {
+                padding: 24px;
+                font-size: 12px;
+                min-height: 68px;
+            }
+        }
+
+        /* Accessibility improvements */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            .choice-btn {
+                border-width: 6px;
+            }
+
+            .input-field {
+                border-width: 6px;
+            }
+        }
+
+        /* Door entry styles */
+        .door-entry {
+            background: linear-gradient(45deg, #4169E1, #1E90FF);
+            border: 4px solid #fff;
+            border-radius: 0;
+            padding: 16px;
+            margin-bottom: 16px;
+            position: relative;
+            box-shadow:
+                inset -4px -4px 0 #1a4fa0,
+                inset 4px 4px 0 #6495ED,
+                4px 4px 0 #000;
+        }
+
+        .door-entry-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .door-entry-title {
+            color: #fff;
+            font-size: 12px;
+            text-shadow: 2px 2px 0 #000;
+            margin: 0;
+        }
+
+        .remove-door-btn {
+            background: linear-gradient(45deg, #ff4444, #cc0000);
+            color: #fff;
+            border: 2px solid #fff;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 8px;
+            text-shadow: 1px 1px 0 #000;
+            box-shadow: 2px 2px 0 #000;
+            transition: all 0.1s ease;
+        }
+
+        .remove-door-btn:hover {
+            transform: translate(1px, 1px);
+            box-shadow: 1px 1px 0 #000;
+        }
+
+        .add-door-btn {
+            background: linear-gradient(45deg, #32CD32, #228B22);
+            color: #fff;
+            border: none;
+            border-radius: 0;
+            padding: 16px 24px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 12px;
+            text-shadow: 1px 1px 0 #000;
+            margin-bottom: 16px;
+            width: 100%;
+            min-height: 56px;
+            box-shadow:
+                inset -4px -4px 0 rgba(0,0,0,0.3),
+                inset 4px 4px 0 rgba(255,255,255,0.3),
+                4px 4px 0 #000;
+            transition: all 0.1s ease;
+        }
+
+        .add-door-btn:hover {
+            transform: translate(2px, 2px);
+            box-shadow:
+                inset -2px -2px 0 rgba(0,0,0,0.3),
+                inset 2px 2px 0 rgba(255,255,255,0.3),
+                2px 2px 0 #000;
+        }
+
+        .doors-counter {
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            color: #000;
+            border: 4px solid #fff;
+            padding: 12px;
+            text-align: center;
+            margin-bottom: 16px;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 1px 1px 0 #fff;
+            box-shadow: 4px 4px 0 #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="text-box">
+            <h1>🚪 GARAGE DOOR DATA ENTRY</h1>
+            <p>Enter garage door information with 8-bit style!</p>
+        </div>
+
+        <!-- API Status Indicator -->
+        <div id="apiStatus" class="api-status hidden">
+            <span id="apiStatusText">Initializing address autocomplete...</span>
+        </div>
+
+        <!-- Message area -->
+        <div id="message" class="message hidden"></div>
+
+        <!-- Main form -->
+        <div class="text-box">
+            <form id="garageForm">
+                <!-- Address Input with Google Places Autocomplete -->
+                <div class="form-group">
+                    <label class="form-label">📍 ADDRESS *</label>
+                    <div class="address-input-container" id="addressContainer">
+                        <!-- This will be populated with either Google Places element or fallback input -->
+                    </div>
+                </div>
+
+                <!-- Doors Counter -->
+                <div id="doorsCounter" class="doors-counter hidden">
+                    <span id="doorCountText">0 DOORS ADDED</span>
+                </div>
+
+                <!-- Dynamic Door Entries Container -->
+                <div id="doorEntriesContainer">
+                    <!-- Door entries will be added here dynamically -->
+                </div>
+
+                <!-- Add Another Door Button -->
+                <button type="button" class="add-door-btn" id="addDoorBtn">
+                    ➕ ADD DOOR
+                </button>
+
+                <!-- Additional Notes -->
+                <div class="form-group">
+                    <label class="form-label">📝 NOTES (OPTIONAL)</label>
+                    <textarea
+                        id="notes"
+                        class="input-field"
+                        placeholder="Any additional details..."
+                        rows="3"
+                        style="resize: vertical; min-height: 80px; text-align: left; padding: 12px;"
+                    ></textarea>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    🚀 SUBMIT DATA
+                </button>
+            </form>
+        </div>
+
+        <!-- Info Footer -->
+        <div class="info-footer">
+            <p>🎮 8-BIT GARAGE DOOR DATA COLLECTION</p>
+            <p>📱 OPTIMIZED FOR MOBILE • 🎯 TOUCH-FRIENDLY INTERFACE</p>
+            <p>🗺️ POWERED BY GOOGLE PLACES API</p>
+            <p>Made with ❤️ for It's Garages</p>
+        </div>
+    </div>
+
+    <script>
+        // Application state
+        let placeAutocomplete = null;
+        let doorEntries = [];
+        let doorCounter = 0;
+        let addressInput = null;
+        let googlePlacesAvailable = false;
+        let addressInputInitialized = false;
+        let initializationAttempted = false;
+
+        // Global error handler for Google Places API
+        window.handleGooglePlacesError = function(error) {
+            // Only log if this is the first error
+            if (!initializationAttempted) {
+                console.warn('Google Places API error:', error);
+                initializationAttempted = true;
+            }
+
+            googlePlacesAvailable = false;
+
+            // Only initialize fallback if not already done
+            if (!addressInputInitialized) {
+                initializeFallbackAddressInput();
+                updateApiStatus('Address autocomplete not available - manual entry only', 'error');
+            }
+        };
+
+        // Global authentication failure handler
+        window.gm_authFailure = function() {
+            console.error('Google Maps API authentication failed');
+            handleGooglePlacesError('Invalid API key - please check your Google Places API key');
+        };
+
+        // Global function for Google Places API callback
+        window.initGooglePlaces = function() {
+            console.log('Google Places API loaded successfully');
+            try {
+                if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+                    googlePlacesAvailable = true;
+                    initializeGooglePlaces();
+                } else {
+                    throw new Error('Google Places API not properly loaded');
+                }
+            } catch (error) {
+                console.error('Error initializing Google Places:', error);
+                handleGooglePlacesError(error.message);
+            }
+        };
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize core functionality
+            initializeAddDoorButton();
+            initializeForm();
+
+            // Add first door by default
+            addDoorEntry();
+
+            // Initialize address input (will be fallback if Google Places not available)
+            setTimeout(() => {
+                if (!googlePlacesAvailable && !addressInputInitialized) {
+                    initializeFallbackAddressInput();
+                    updateApiStatus('Manual address entry (Google Places API not configured)', 'error');
+                }
+            }, 2000);
+        });
+
+        // Initialize Google Places Autocomplete with new API
+        function initializeGooglePlaces() {
+            const addressContainer = document.getElementById('addressContainer');
+
+            try {
+                console.log('Initializing Google Places with new API...');
+
+                // Check if the new PlaceAutocompleteElement is available
+                if (google.maps.places && google.maps.places.PlaceAutocompleteElement) {
+                    console.log('Using new PlaceAutocompleteElement API');
+
+                    // Create the new place autocomplete element
+                    placeAutocomplete = new google.maps.places.PlaceAutocompleteElement({
+                        componentRestrictions: { country: 'us' },
+                        fields: ['formatted_address', 'geometry', 'name', 'place_id'],
+                        types: ['address']
+                    });
+
+                    // Set placeholder and styling
+                    placeAutocomplete.setAttribute('placeholder', 'Start typing address...');
+                    placeAutocomplete.setAttribute('required', 'true');
+
+                    // Add to container
+                    addressContainer.innerHTML = '';
+                    addressContainer.appendChild(placeAutocomplete);
+                    addressInputInitialized = true;
+
+                    // Listen for place selection
+                    placeAutocomplete.addEventListener('gmp-placeselect', (event) => {
+                        const place = event.place;
+                        console.log('Place selected with new API:', place);
+
+                        let selectedAddress = '';
+                        if (place.formattedAddress) {
+                            selectedAddress = place.formattedAddress;
+                        } else if (place.displayName) {
+                            selectedAddress = place.displayName;
+                        }
+
+                        if (selectedAddress) {
+                            showMessage('✅ Address selected: ' + selectedAddress, 'success');
+                            updateApiStatus('Address autocomplete active', 'success');
+                        } else {
+                            showMessage('⚠️ Please select a complete address', 'error');
+                        }
+                    });
+
+                    updateApiStatus('Address autocomplete ready', 'success');
+                    console.log('New Google Places API initialized successfully');
+
+                } else if (google.maps.places && google.maps.places.Autocomplete) {
+                    console.log('Falling back to legacy Autocomplete API');
+                    initializeLegacyGooglePlaces();
+
+                } else {
+                    throw new Error('Google Places API not available');
+                }
+
+            } catch (error) {
+                console.error('Error initializing Google Places:', error);
+                handleGooglePlacesError(error.message);
+            }
+        }
+
+        // Fallback to legacy Google Places API
+        function initializeLegacyGooglePlaces() {
+            const addressContainer = document.getElementById('addressContainer');
+
+            // Create regular input for legacy API
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'address';
+            input.className = 'input-field';
+            input.placeholder = 'Start typing address...';
+            input.required = true;
+
+            addressContainer.innerHTML = '';
+            addressContainer.appendChild(input);
+            addressInput = input;
+            addressInputInitialized = true;
+
+            // Initialize legacy autocomplete
+            const autocomplete = new google.maps.places.Autocomplete(input, {
+                types: ['address'],
+                componentRestrictions: { country: 'us' },
+                fields: ['formatted_address', 'geometry', 'name']
+            });
+
+            // Listen for place selection
+            autocomplete.addListener('place_changed', function() {
+                const place = autocomplete.getPlace();
+                console.log('Place selected with legacy API:', place);
+
+                if (place.formatted_address) {
+                    input.value = place.formatted_address;
+                    showMessage('✅ Address selected: ' + place.formatted_address, 'success');
+                } else if (place.name) {
+                    input.value = place.name;
+                    showMessage('✅ Address selected: ' + place.name, 'success');
+                } else {
+                    showMessage('⚠️ Please select a complete address', 'error');
+                }
+            });
+
+            updateApiStatus('Address autocomplete ready (legacy API)', 'success');
+            console.log('Legacy Google Places API initialized successfully');
+        }
+
+        // Initialize fallback address input when Google Places is not available
+        function initializeFallbackAddressInput() {
+            // Prevent duplicate initialization
+            if (addressInputInitialized) {
+                console.log('Address input already initialized, skipping...');
+                return;
+            }
+
+            const addressContainer = document.getElementById('addressContainer');
+
+            // Create fallback input
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'address';
+            input.className = 'address-fallback';
+            input.placeholder = 'Enter address manually...';
+            input.required = true;
+
+            addressContainer.innerHTML = '';
+            addressContainer.appendChild(input);
+            addressInput = input;
+            addressInputInitialized = true;
+
+            console.log('Fallback address input initialized');
+        }
+
+        // Update API status indicator
+        function updateApiStatus(message, type) {
+            const statusEl = document.getElementById('apiStatus');
+            const statusText = document.getElementById('apiStatusText');
+
+            statusText.textContent = message;
+            statusEl.className = `api-status ${type}`;
+            statusEl.classList.remove('hidden');
+
+            // Auto-hide success messages after 3 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusEl.classList.add('hidden');
+                }, 3000);
+            }
+        }
+
+        // Initialize Add Door Button
+        function initializeAddDoorButton() {
+            const addDoorBtn = document.getElementById('addDoorBtn');
+            addDoorBtn.addEventListener('click', function() {
+                addDoorEntry();
+
+                // Add haptic feedback for mobile
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+            });
+        }
+
+        // Add a new door entry
+        function addDoorEntry() {
+            doorCounter++;
+            const doorId = 'door_' + doorCounter;
+
+            const doorEntry = {
+                id: doorId,
+                selectedSize: null,
+                customMode: false,
+                width: 8,
+                height: 7
+            };
+
+            doorEntries.push(doorEntry);
+
+            const doorHTML = createDoorEntryHTML(doorEntry, doorEntries.length);
+            const container = document.getElementById('doorEntriesContainer');
+            container.insertAdjacentHTML('beforeend', doorHTML);
+
+            // Initialize the new door entry
+            initializeDoorEntry(doorEntry);
+
+            // Update counter
+            updateDoorsCounter();
+        }
+
+        // Create HTML for a door entry
+        function createDoorEntryHTML(doorEntry, doorNumber) {
+            return `
+                <div class="door-entry" id="${doorEntry.id}">
+                    <div class="door-entry-header">
+                        <h3 class="door-entry-title">🚪 DOOR ${doorNumber}</h3>
+                        ${doorEntries.length > 1 ? `<button type="button" class="remove-door-btn" onclick="removeDoorEntry('${doorEntry.id}')">✖ REMOVE</button>` : ''}
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">📏 DOOR SIZE *</label>
+                        <div class="size-grid">
+                            <button type="button" class="choice-btn" data-door="${doorEntry.id}" data-size="8x7">8' × 7'<br>SINGLE</button>
+                            <button type="button" class="choice-btn" data-door="${doorEntry.id}" data-size="9x7">9' × 7'<br>SINGLE WIDE</button>
+                            <button type="button" class="choice-btn" data-door="${doorEntry.id}" data-size="16x7">16' × 7'<br>DOUBLE</button>
+                            <button type="button" class="choice-btn" data-door="${doorEntry.id}" data-size="18x7">18' × 7'<br>DOUBLE WIDE</button>
+                            <button type="button" class="choice-btn" data-door="${doorEntry.id}" data-size="8x8">8' × 8'<br>SINGLE TALL</button>
+                            <button type="button" class="choice-btn" data-door="${doorEntry.id}" data-size="16x8">16' × 8'<br>DOUBLE TALL</button>
+                            <button type="button" class="choice-btn" data-door="${doorEntry.id}" data-size="custom">CUSTOM SIZE</button>
+                        </div>
+
+                        <div id="${doorEntry.id}_customInputs" class="custom-inputs hidden">
+                            <div>
+                                <label class="form-label">WIDTH (FT)</label>
+                                <select id="${doorEntry.id}_customWidth" class="input-field">
+                                    <!-- Options will be populated by JavaScript -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">HEIGHT (FT)</label>
+                                <select id="${doorEntry.id}_customHeight" class="input-field">
+                                    <!-- Options will be populated by JavaScript -->
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Initialize a specific door entry
+        function initializeDoorEntry(doorEntry) {
+            // Initialize size buttons for this door
+            const sizeButtons = document.querySelectorAll(`[data-door="${doorEntry.id}"]`);
+            sizeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove selected class from all buttons for this door
+                    sizeButtons.forEach(btn => btn.classList.remove('selected'));
+
+                    // Add selected class to clicked button
+                    this.classList.add('selected');
+
+                    const size = this.dataset.size;
+                    doorEntry.selectedSize = size;
+
+                    const customInputs = document.getElementById(`${doorEntry.id}_customInputs`);
+
+                    if (size === 'custom') {
+                        doorEntry.customMode = true;
+                        customInputs.classList.remove('hidden');
+                    } else {
+                        doorEntry.customMode = false;
+                        customInputs.classList.add('hidden');
+
+                        // Set preset dimensions
+                        const sizeParts = size.split('x');
+                        doorEntry.width = parseInt(sizeParts[0]);
+                        doorEntry.height = parseInt(sizeParts[1]);
+                    }
+
+                    // Add haptic feedback for mobile
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
+                });
+            });
+
+            // Initialize custom inputs for this door
+            initializeCustomInputsForDoor(doorEntry);
+        }
+
+        // Initialize custom size dropdown inputs for a specific door
+        function initializeCustomInputsForDoor(doorEntry) {
+            const widthSelect = document.getElementById(`${doorEntry.id}_customWidth`);
+            const heightSelect = document.getElementById(`${doorEntry.id}_customHeight`);
+
+            // Clear existing options
+            widthSelect.innerHTML = '';
+            heightSelect.innerHTML = '';
+
+            // Populate width options (6' to 20' in 1' increments)
+            for (let i = 6; i <= 20; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i + "'";
+                widthSelect.appendChild(option);
+            }
+
+            // Populate height options (6' to 10' in 6" increments)
+            const heights = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
+            heights.forEach(height => {
+                const option = document.createElement('option');
+                option.value = height;
+                option.textContent = height + "'";
+                heightSelect.appendChild(option);
+            });
+
+            // Set default values
+            widthSelect.value = doorEntry.width;
+            heightSelect.value = doorEntry.height;
+
+            // Add change listeners
+            widthSelect.addEventListener('change', function() {
+                doorEntry.width = parseFloat(this.value);
+            });
+
+            heightSelect.addEventListener('change', function() {
+                doorEntry.height = parseFloat(this.value);
+            });
+        }
+
+        // Remove a door entry
+        function removeDoorEntry(doorId) {
+            // Remove from array
+            doorEntries = doorEntries.filter(door => door.id !== doorId);
+
+            // Remove from DOM
+            const doorElement = document.getElementById(doorId);
+            if (doorElement) {
+                doorElement.remove();
+            }
+
+            // Update counter and renumber doors
+            updateDoorsCounter();
+            renumberDoors();
+
+            // Add haptic feedback for mobile
+            if (navigator.vibrate) {
+                navigator.vibrate([50, 50, 50]);
+            }
+        }
+
+        // Update the doors counter
+        function updateDoorsCounter() {
+            const counter = document.getElementById('doorsCounter');
+            const countText = document.getElementById('doorCountText');
+
+            if (doorEntries.length > 0) {
+                counter.classList.remove('hidden');
+                countText.textContent = `${doorEntries.length} DOOR${doorEntries.length > 1 ? 'S' : ''} ADDED`;
+            } else {
+                counter.classList.add('hidden');
+            }
+        }
+
+        // Renumber doors after removal
+        function renumberDoors() {
+            doorEntries.forEach((door, index) => {
+                const doorElement = document.getElementById(door.id);
+                const titleElement = doorElement.querySelector('.door-entry-title');
+                titleElement.textContent = `🚪 DOOR ${index + 1}`;
+            });
+        }
+
+        // Initialize form submission
+        function initializeForm() {
+            const form = document.getElementById('garageForm');
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                submitForm();
+            });
+        }
+
+        // Submit form data
+        function submitForm() {
+            // Get address value from different possible input sources
+            let address = '';
+            if (placeAutocomplete && placeAutocomplete.value) {
+                address = placeAutocomplete.value.trim();
+            } else if (addressInput && addressInput.value) {
+                address = addressInput.value.trim();
+            } else {
+                const fallbackInput = document.getElementById('address');
+                if (fallbackInput) {
+                    address = fallbackInput.value.trim();
+                }
+            }
+
+            const notes = document.getElementById('notes').value.trim();
+
+            // Validation
+            if (!address) {
+                showMessage('❌ Please enter an address!', 'error');
+                return;
+            }
+
+            if (doorEntries.length === 0) {
+                showMessage('❌ Please add at least one door!', 'error');
+                return;
+            }
+
+            // Validate each door entry
+            let hasInvalidDoor = false;
+            const doorsData = [];
+
+            doorEntries.forEach((door, index) => {
+                if (!door.selectedSize) {
+                    showMessage(`❌ Please select a size for Door ${index + 1}!`, 'error');
+                    hasInvalidDoor = true;
+                    return;
+                }
+
+                let width, height;
+                if (door.customMode) {
+                    width = parseFloat(document.getElementById(`${door.id}_customWidth`).value);
+                    height = parseFloat(document.getElementById(`${door.id}_customHeight`).value);
+                } else {
+                    width = door.width;
+                    height = door.height;
+                }
+
+                doorsData.push({
+                    doorNumber: index + 1,
+                    width: width,
+                    height: height,
+                    sizeCategory: door.customMode ? 'custom' : door.selectedSize,
+                    isCustom: door.customMode
+                });
+            });
+
+            if (hasInvalidDoor) {
+                return;
+            }
+
+            // Prepare form data
+            const formData = {
+                address: address,
+                doorCount: doorEntries.length,
+                doors: doorsData,
+                notes: notes || null,
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                screenSize: `${screen.width}x${screen.height}`
+            };
+
+            // Show loading state
+            setLoadingState(true);
+
+            // Simulate form submission (replace with actual API call)
+            setTimeout(() => {
+                console.log('Form data:', formData);
+                showMessage(`✅ Data submitted successfully! ${doorEntries.length} door${doorEntries.length > 1 ? 's' : ''} recorded. 🎉`, 'success');
+
+                // Haptic feedback for success
+                if (navigator.vibrate) {
+                    navigator.vibrate([100, 50, 100]);
+                }
+
+                resetForm();
+                setLoadingState(false);
+            }, 1500);
+        }
+
+        // Show message to user
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type}`;
+            messageEl.classList.remove('hidden');
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                messageEl.classList.add('hidden');
+            }, 5000);
+        }
+
+        // Set loading state
+        function setLoadingState(loading) {
+            const submitBtn = document.getElementById('submitBtn');
+            const form = document.getElementById('garageForm');
+
+            if (loading) {
+                submitBtn.textContent = '⏳ SUBMITTING...';
+                form.classList.add('loading');
+            } else {
+                submitBtn.textContent = '🚀 SUBMIT DATA';
+                form.classList.remove('loading');
+            }
+        }
+
+        // Reset form to initial state
+        function resetForm() {
+            // Reset address input
+            if (placeAutocomplete && placeAutocomplete.value !== undefined) {
+                placeAutocomplete.value = '';
+            } else if (addressInput) {
+                addressInput.value = '';
+            } else {
+                const fallbackInput = document.getElementById('address');
+                if (fallbackInput) {
+                    fallbackInput.value = '';
+                }
+            }
+
+            document.getElementById('notes').value = '';
+
+            // Clear all door entries
+            doorEntries = [];
+            doorCounter = 0;
+            document.getElementById('doorEntriesContainer').innerHTML = '';
+
+            // Hide counter
+            document.getElementById('doorsCounter').classList.add('hidden');
+
+            // Add first door by default
+            addDoorEntry();
+
+            // Note: We don't reset addressInputInitialized or initializationAttempted
+            // as the address input should remain initialized for the session
+        }
+
+        // Make removeDoorEntry available globally for onclick handlers
+        window.removeDoorEntry = removeDoorEntry;
+
+        // Add touch feedback for mobile
+        document.addEventListener('touchstart', function() {}, { passive: true });
+
+        // Debug function to check Google Places API status
+        window.checkGooglePlacesAPI = function() {
+            console.log('=== Google Places API Status ===');
+            console.log('Google object:', typeof google !== 'undefined' ? 'available' : 'undefined');
+            console.log('Google Maps:', typeof google !== 'undefined' && google.maps ? 'loaded' : 'not loaded');
+            console.log('Google Places:', typeof google !== 'undefined' && google.maps && google.maps.places ? 'loaded' : 'not loaded');
+            console.log('Places available:', googlePlacesAvailable);
+            console.log('Address input initialized:', addressInputInitialized);
+            console.log('Initialization attempted:', initializationAttempted);
+            console.log('Place autocomplete instance:', placeAutocomplete);
+            console.log('Address input element:', addressInput);
+            console.log('================================');
+        };
+    </script>
+</body>
+</html>

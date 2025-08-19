@@ -1,7 +1,5 @@
 import express from 'express';
-import { authenticate, AuthenticatedRequest } from '../middleware/auth';
 import { validate } from '../middleware/validation';
-import { auditDataAccess } from '../middleware/auditMiddleware';
 import { googleApiService } from '../services/googleApiService';
 import { getDb } from '../config/dbAccessor';
 import Joi from 'joi';
@@ -79,10 +77,8 @@ interface DataEntry {
  * Reverse geocode coordinates to address
  */
 router.post('/reverse-geocode',
-  authenticate,
   validate(reverseGeocodeSchema),
-  auditDataAccess('data_entry', 'reverse_geocode'),
-  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+  async (req: express.Request, res, next): Promise<void> => {
     try {
       const { latitude, longitude } = req.body;
 
@@ -118,9 +114,7 @@ router.post('/reverse-geocode',
  * Get a random Centennial address for data entry
  */
 router.get('/centennial-address',
-  authenticate,
-  auditDataAccess('data_entry', 'get_centennial_address'),
-  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+  async (req: express.Request, res, next): Promise<void> => {
     try {
       const addressData = await getCentennialAddressWithStreetView();
 
@@ -158,9 +152,7 @@ router.get('/centennial-address',
  * Search Centennial addresses
  */
 router.get('/centennial-addresses/search',
-  authenticate,
-  auditDataAccess('data_entry', 'search_centennial_addresses'),
-  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+  async (req: express.Request, res, next): Promise<void> => {
     try {
       const searchTerm = req.query.q as string;
       const limit = parseInt(req.query.limit as string) || 10;
@@ -199,9 +191,7 @@ router.get('/centennial-addresses/search',
  * Get Centennial address statistics
  */
 router.get('/centennial-addresses/stats',
-  authenticate,
-  auditDataAccess('data_entry', 'centennial_stats'),
-  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+  async (req: express.Request, res, next): Promise<void> => {
     try {
       const stats = await getCentennialAddressStats();
 
@@ -220,12 +210,10 @@ router.get('/centennial-addresses/stats',
  * Submit garage door data with automatic Street View image capture
  */
 router.post('/submit',
-  authenticate,
   validate(dataEntrySchema),
-  auditDataAccess('data_entry', 'submit'),
-  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+  async (req: express.Request, res, next): Promise<void> => {
     try {
-      const userId = req.user!.userId;
+      const userId = 1; // Default user ID since no authentication
       const data: DataEntry = req.body;
 
       // Get Street View image for the address
@@ -285,9 +273,7 @@ router.post('/submit',
  * Get all data entries for training data export
  */
 router.get('/export',
-  authenticate,
-  auditDataAccess('data_entry', 'export'),
-  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+  async (req: express.Request, res, next): Promise<void> => {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
@@ -319,9 +305,7 @@ router.get('/export',
  * Get data entry by ID for verification/editing
  */
 router.get('/:id',
-  authenticate,
-  auditDataAccess('data_entry', 'view'),
-  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+  async (req: express.Request, res, next): Promise<void> => {
     try {
       const entryId = parseInt(req.params.id || '0');
       const entry = await getDataEntryById(entryId);
@@ -352,13 +336,11 @@ router.get('/:id',
  * Update data entry (for corrections/verification)
  */
 router.put('/:id',
-  authenticate,
   validate(dataEntrySchema),
-  auditDataAccess('data_entry', 'update'),
-  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+  async (req: express.Request, res, next): Promise<void> => {
     try {
       const entryId = parseInt(req.params.id || '0');
-      const userId = req.user!.userId;
+      const userId = 1; // Default user ID since no authentication
       const data: DataEntry = req.body;
 
       const updated = await updateDataEntry(entryId, userId, data);
@@ -391,12 +373,10 @@ router.put('/:id',
  * Mark data entry as verified (for quality control)
  */
 router.post('/:id/verify',
-  authenticate,
-  auditDataAccess('data_entry', 'verify'),
-  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+  async (req: express.Request, res, next): Promise<void> => {
     try {
       const entryId = parseInt(req.params.id || '0');
-      const userId = req.user!.userId;
+      const userId = 1; // Default user ID since no authentication
       const { verified, notes } = req.body;
 
       await verifyDataEntry(entryId, userId, verified, notes);
@@ -598,10 +578,8 @@ async function verifyDataEntry(id: number, verifierId: number, verified: boolean
 /**
  * Export all garage door data for ML training
  */
-router.get('/export',
-  authenticate,
-  auditDataAccess('data_entry', 'export'),
-  async (req: AuthenticatedRequest, res, next): Promise<void> => {
+router.get('/export-ml',
+  async (req: express.Request, res, next): Promise<void> => {
     try {
       // Get all data entries with user information
       const query = `

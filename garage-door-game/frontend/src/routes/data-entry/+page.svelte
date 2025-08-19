@@ -1,8 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { goto } from '$app/navigation';
-  import { authStore } from '$lib/stores/auth';
-  import { get } from 'svelte/store';
   import { getApiBase } from '$lib/config';
   const API_BASE = getApiBase();
 
@@ -40,12 +37,9 @@
   let locationSupported = 'geolocation' in navigator;
   let gettingCentennialAddress = false;
 
-  // Check authentication
+  // Initialize component
   onMount(() => {
-    const auth = get(authStore);
-    if (!auth.isAuthenticated) {
-      goto('/login');
-    }
+    // Component ready
   });
 
   // Get user's current location and reverse geocode to address
@@ -74,12 +68,10 @@
       addressSource = 'gps';
 
       // Reverse geocode using Google Maps API
-      const auth = get(authStore);
       const response = await fetch(`${API_BASE}/data-entry/reverse-geocode`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${auth.token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ latitude, longitude })
       });
@@ -121,11 +113,10 @@
     message = '';
 
     try {
-      const auth = get(authStore);
       const response = await fetch(`${API_BASE}/data-entry/centennial-address`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${auth.token}`
+          'Content-Type': 'application/json'
         }
       });
 
@@ -256,12 +247,10 @@
     message = '';
 
     try {
-      const auth = get(authStore);
       const response = await fetch(`${API_BASE}/data-entry/submit`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${auth.token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           // Basic data

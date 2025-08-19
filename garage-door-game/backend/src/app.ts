@@ -6,10 +6,7 @@ import cookieParser from 'cookie-parser';
 import path from 'path';
 
 // Import routes
-import authRoutes from './routes/auth';
-import userRoutes from './routes/users';
 import jobRoutes from './routes/jobs';
-import dataRoutes from './routes/data';
 import estimateRoutes from './routes/estimate';
 import dataEntryRoutes from './routes/dataEntry';
 import testRoutes from './routes/test';
@@ -163,10 +160,7 @@ export const createApp = () => {
   });
 
   // API routes
-  app.use('/api/auth', authRoutes);
-  app.use('/api/users', userRoutes);
   app.use('/api/jobs', jobRoutes);
-  app.use('/api/data', dataRoutes);
   app.use('/api/estimate', estimateRoutes);
   app.use('/api/data-entry', dataEntryRoutes);
   app.use('/api/test', testRoutes);

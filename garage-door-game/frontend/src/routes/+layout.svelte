@@ -2,14 +2,9 @@
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/stores';
-	import { browser } from '$app/environment';
-	import { goto } from '$app/navigation';
-	import { authStore } from '$lib/stores/auth';
-	import { onMount } from 'svelte';
 
 	let { children } = $props();
 	let isMenuOpen = $state(false);
-	let user = $state<any>(null);
 
 	function toggleMenu() {
 		isMenuOpen = !isMenuOpen;
@@ -19,32 +14,11 @@
 		isMenuOpen = false;
 	}
 
-	// Logout function
-	function logout() {
-		authStore.logout();
-		user = null;
-		goto('/');
-	}
-
-	// Initialize auth and subscribe to changes
-	onMount(() => {
-		if (browser) {
-			authStore.init();
-		}
-	});
-
-	// Subscribe to auth store changes
+	// Close menu when route changes
 	$effect(() => {
-		const unsubscribe = authStore.subscribe((auth) => {
-			user = auth.isAuthenticated ? auth.user : null;
-		});
-
-		// Close menu when route changes
 		if ($page.url.pathname) {
 			isMenuOpen = false;
 		}
-
-		return unsubscribe;
 	});
 </script>
 
@@ -72,52 +46,9 @@
 					<a href="/" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
 						Home
 					</a>
-					{#if user}
-						<a href="/data-entry" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							Data Entry
-						</a>
-						<a href="/validation-game" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							Validation Game
-						</a>
-
-						<a href="/leaderboard" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							Leaderboard
-						</a>
-						<a href="/data-dashboard" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							Data Dashboard
-						</a>
-						<a href="/achievements" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							Achievements
-						</a>
-						<a href="/profile" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							Profile
-						</a>
-
-						<!-- User info and logout -->
-						<div class="flex items-center space-x-4">
-							<span class="text-sm text-gray-600">Welcome, {user.username}!</span>
-							<button onclick={logout} class="btn-outline text-sm py-1 px-3">
-								Logout
-							</button>
-						</div>
-					{:else}
-						<a href="/leaderboard" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							Leaderboard
-						</a>
-						<a href="/achievements" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
-							Achievements
-						</a>
-
-						<!-- Auth buttons -->
-						<div class="flex items-center space-x-4">
-							<a href="/login" class="btn-outline">
-								Login
-							</a>
-							<a href="/login" class="btn-primary">
-								Sign Up
-							</a>
-						</div>
-					{/if}
+					<a href="/data-entry" class="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors">
+						Data Entry
+					</a>
 				</div>
 
 				<!-- Mobile menu button -->
@@ -146,46 +77,9 @@
 					<a href="/" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
 						Home
 					</a>
-					{#if user}
-						<a href="/data-entry" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-							Data Entry
-						</a>
-						<a href="/validation-game" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-							Validation Game
-						</a>
-						<a href="/game" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-							Play Game
-						</a>
-
-						<a href="/leaderboard" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-							Leaderboard
-						</a>
-						<a href="/profile" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-							Profile
-						</a>
-
-						<!-- Mobile user info and logout -->
-						<div class="pt-4 pb-2 border-t border-gray-200 space-y-2">
-							<div class="px-3 py-2 text-sm text-gray-600">Welcome, {user.username}!</div>
-							<button onclick={() => { logout(); closeMenu(); }} class="block w-full text-center btn-outline">
-								Logout
-							</button>
-						</div>
-					{:else}
-						<a href="/leaderboard" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
-							Leaderboard
-						</a>
-
-						<!-- Mobile auth buttons -->
-						<div class="pt-4 pb-2 border-t border-gray-200 space-y-2">
-							<a href="/login" onclick={closeMenu} class="block w-full text-center btn-outline">
-								Login
-							</a>
-							<a href="/login" onclick={closeMenu} class="block w-full text-center btn-primary">
-								Sign Up
-							</a>
-						</div>
-					{/if}
+					<a href="/data-entry" onclick={closeMenu} class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors">
+						Data Entry
+					</a>
 				</div>
 			</div>
 		{/if}

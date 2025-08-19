@@ -551,8 +551,18 @@ export const initializeDatabase = (): Promise<void> => {
           reject(err);
           return;
         }
-        console.log('Database schema initialized successfully');
-        resolve();
+
+        // Create default user for data entry (no authentication)
+        db.run(`INSERT OR IGNORE INTO users (id, username, email, password_hash, role, created_at)
+                VALUES (1, 'anonymous', 'anonymous@itsgarages.com', 'no-password', 'user', CURRENT_TIMESTAMP)`, (err) => {
+          if (err) {
+            console.error('Error creating default user:', err);
+            reject(err);
+            return;
+          }
+          console.log('Database schema initialized successfully');
+          resolve();
+        });
       });
     });
 

@@ -36,10 +36,10 @@ gcloud run deploy $BACKEND_SERVICE \
   --cpu 1 \
   --set-env-vars NODE_ENV=production \
   --set-env-vars DATABASE_URL=${DATABASE_URL:-sqlite:/tmp/garage_game.db} \
-  --set-env-vars JWT_SECRET=${JWT_SECRET:?JWT_SECRET env var required} \
-  --set-env-vars GOOGLE_STREET_VIEW_API_KEY=${GOOGLE_STREET_VIEW_API_KEY:?Set GOOGLE_STREET_VIEW_API_KEY} \
-  --set-env-vars GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:?Set GOOGLE_MAPS_API_KEY} \
-  --set-env-vars GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY:?Set GOOGLE_PLACES_API_KEY} \
+  --set-env-vars JWT_SECRET=${JWT_SECRET:-temp-jwt-secret-for-testing-$(date +%s)} \
+  --set-env-vars GOOGLE_STREET_VIEW_API_KEY=${GOOGLE_STREET_VIEW_API_KEY:-placeholder-key} \
+  --set-env-vars GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-placeholder-key} \
+  --set-env-vars GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY:-placeholder-key} \
   --set-env-vars OVERPASS_API_URL=${OVERPASS_API_URL:-https://overpass-api.de/api/interpreter} \
   --set-env-vars CORS_ORIGIN=${CORS_ORIGIN:-https://itsgarages.itsfait.com} \
   --set-env-vars FRONTEND_ORIGIN=${FRONTEND_ORIGIN:-}

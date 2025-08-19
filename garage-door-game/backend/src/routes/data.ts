@@ -174,6 +174,8 @@ router.get('/all', authenticate, (req: any, res, next) => {
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = (page - 1) * limit;
 
+    const db = getDb();
+    if (!db) return res.status(503).json({ success: false, error: 'Database not ready' });
     return db.all(`
       SELECT
         ds.id,

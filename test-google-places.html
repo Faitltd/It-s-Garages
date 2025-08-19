@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Places API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: #4285f4;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        button:hover {
+            background: #3367d6;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🗺️ Google Places API Test</h1>
+        <p>This page helps test Google Places API integration and debug any issues.</p>
+        
+        <div id="status" class="status info">
+            <strong>Status:</strong> Initializing...
+        </div>
+        
+        <div>
+            <label for="address"><strong>Address Input (with autocomplete):</strong></label>
+            <input type="text" id="address" class="input-field" placeholder="Start typing an address...">
+        </div>
+        
+        <div>
+            <button onclick="testAPI()">Test API Status</button>
+            <button onclick="clearAddress()">Clear Address</button>
+            <button onclick="showDebugInfo()">Show Debug Info</button>
+        </div>
+        
+        <div id="debugInfo" class="debug-info" style="display: none;">
+            <strong>Debug Information:</strong><br>
+            <div id="debugContent"></div>
+        </div>
+    </div>
+
+    <!-- Google Places API - Replace YOUR_API_KEY with actual key -->
+    <script>
+        const GOOGLE_PLACES_API_KEY = 'YOUR_GOOGLE_PLACES_API_KEY';
+
+        if (GOOGLE_PLACES_API_KEY && GOOGLE_PLACES_API_KEY !== 'YOUR_GOOGLE_PLACES_API_KEY') {
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_PLACES_API_KEY}&libraries=places&loading=async&callback=initGooglePlaces`;
+            script.async = true;
+            script.defer = true;
+            script.onerror = function() {
+                updateStatus('❌ Failed to load Google Places API script', 'error');
+            };
+            document.head.appendChild(script);
+        } else {
+            document.addEventListener('DOMContentLoaded', function() {
+                updateStatus('❌ API key not configured. Please set GOOGLE_PLACES_API_KEY.', 'error');
+            });
+        }
+
+        // Handle authentication failures
+        window.gm_authFailure = function() {
+            updateStatus('❌ Google Maps API authentication failed. Please check your API key.', 'error');
+        };
+    </script>
+
+    <script>
+        let autocomplete = null;
+        let statusEl = document.getElementById('status');
+        let addressInput = document.getElementById('address');
+
+        // Global callback function for Google Places API
+        window.initGooglePlaces = function() {
+            console.log('Google Places API callback triggered');
+            updateStatus('Google Places API loaded successfully!', 'success');
+            
+            try {
+                // Initialize autocomplete
+                autocomplete = new google.maps.places.Autocomplete(addressInput, {
+                    types: ['address'],
+                    componentRestrictions: { country: 'us' },
+                    fields: ['formatted_address', 'geometry', 'name', 'place_id']
+                });
+
+                // Add place changed listener
+                autocomplete.addListener('place_changed', function() {
+                    const place = autocomplete.getPlace();
+                    console.log('Place selected:', place);
+                    
+                    if (place.formatted_address) {
+                        updateStatus(`✅ Address selected: ${place.formatted_address}`, 'success');
+                    } else if (place.name) {
+                        updateStatus(`✅ Place selected: ${place.name}`, 'success');
+                    } else {
+                        updateStatus('⚠️ Incomplete place data received', 'error');
+                    }
+                });
+
+                updateStatus('✅ Google Places Autocomplete initialized successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Error initializing autocomplete:', error);
+                updateStatus(`❌ Error initializing autocomplete: ${error.message}`, 'error');
+            }
+        };
+
+        // Handle API load errors
+        window.gm_authFailure = function() {
+            updateStatus('❌ Google Maps API authentication failed. Please check your API key.', 'error');
+        };
+
+        // Update status display
+        function updateStatus(message, type) {
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+
+        // Test API status
+        function testAPI() {
+            const debugInfo = {
+                'Google object': typeof google !== 'undefined' ? '✅ Available' : '❌ Not available',
+                'Google Maps': typeof google !== 'undefined' && google.maps ? '✅ Loaded' : '❌ Not loaded',
+                'Google Places': typeof google !== 'undefined' && google.maps && google.maps.places ? '✅ Loaded' : '❌ Not loaded',
+                'Autocomplete instance': autocomplete ? '✅ Initialized' : '❌ Not initialized',
+                'Current address value': addressInput.value || '(empty)'
+            };
+
+            let status = '📊 API Status Check:\n';
+            let hasErrors = false;
+            
+            Object.entries(debugInfo).forEach(([key, value]) => {
+                status += `${key}: ${value}\n`;
+                if (value.includes('❌')) {
+                    hasErrors = true;
+                }
+            });
+
+            updateStatus(hasErrors ? 'Some API components are not working properly' : 'All API components are working correctly', hasErrors ? 'error' : 'success');
+            console.log(status);
+        }
+
+        // Clear address input
+        function clearAddress() {
+            addressInput.value = '';
+            updateStatus('Address cleared', 'info');
+        }
+
+        // Show debug information
+        function showDebugInfo() {
+            const debugDiv = document.getElementById('debugInfo');
+            const debugContent = document.getElementById('debugContent');
+            
+            const info = {
+                'User Agent': navigator.userAgent,
+                'Screen Size': `${screen.width}x${screen.height}`,
+                'Window Size': `${window.innerWidth}x${window.innerHeight}`,
+                'Google API Status': typeof google !== 'undefined' ? 'Loaded' : 'Not loaded',
+                'Autocomplete Status': autocomplete ? 'Initialized' : 'Not initialized',
+                'Current URL': window.location.href,
+                'Protocol': window.location.protocol,
+                'Timestamp': new Date().toISOString()
+            };
+
+            let debugHTML = '';
+            Object.entries(info).forEach(([key, value]) => {
+                debugHTML += `<strong>${key}:</strong> ${value}<br>`;
+            });
+
+            debugContent.innerHTML = debugHTML;
+            debugDiv.style.display = debugDiv.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStatus('Page loaded. Waiting for Google Places API...', 'info');
+            
+            // Check if API is already loaded (in case callback was missed)
+            setTimeout(() => {
+                if (typeof google !== 'undefined' && google.maps && google.maps.places && !autocomplete) {
+                    console.log('API was loaded but callback missed, initializing manually...');
+                    initGooglePlaces();
+                }
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
