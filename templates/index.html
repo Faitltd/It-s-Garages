@@ -1,128 +1,670 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚪 Garage Door Data Entry</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Press Start 2P', monospace;
+            background: linear-gradient(135deg, #87CEEB 0%, #98FB98 100%);
+            min-height: 100vh;
+            color: #333;
+            font-size: 12px;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            border: 4px solid #333;
+            border-radius: 0;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 8px 8px 0px #333;
+            position: relative;
+        }
+        
+        .header::before {
+            content: "🏠";
+            position: absolute;
+            top: -15px;
+            left: 20px;
+            font-size: 30px;
+            background: #FFE135;
+            border: 3px solid #333;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .title {
+            color: white;
+            text-shadow: 3px 3px 0px #333;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #FFE135;
+            text-shadow: 2px 2px 0px #333;
+            font-size: 10px;
+        }
+        
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            gap: 20px;
+        }
+        
+        .stat-box {
+            background: #FFE135;
+            border: 4px solid #333;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 4px 4px 0px #333;
+        }
+        
+        .stat-number {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 8px;
+            color: #666;
+        }
+        
+        .form-board {
+            background: white;
+            border: 4px solid #333;
+            border-radius: 0;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 8px 8px 0px #333;
+        }
+        
+        .form-section {
+            margin-bottom: 25px;
+        }
+        
+        .form-title {
+            color: #FF6B6B;
+            margin-bottom: 15px;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 10px;
+        }
+        
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px;
+            border: 3px solid #333;
+            background: white;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 10px;
+            box-shadow: inset 2px 2px 0px #ccc;
+        }
+        
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            background: #F0F8FF;
+            box-shadow: inset 2px 2px 0px #4ECDC4;
+        }
+        
+        .size-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .size-btn {
+            background: #4ECDC4;
+            border: 3px solid #333;
+            padding: 15px 10px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 8px;
+            cursor: pointer;
+            transition: all 0.1s;
+            color: #333;
+            text-align: center;
+        }
+        
+        .size-btn:hover {
+            background: #45B7B8;
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #333;
+        }
+        
+        .size-btn.selected {
+            background: #FFE135;
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #333;
+        }
 
-{% block title %}Dashboard - It's Garages{% endblock %}
+        .custom-size-btn {
+            background: #9B59B6 !important;
+            color: white !important;
+        }
 
-{% block content %}
-<div class="card">
-    <h2>📊 Dashboard</h2>
-    <p>Welcome to the It's Garages data entry system. Track and manage garage measurements for properties.</p>
-</div>
+        .custom-size-btn:hover {
+            background: #8E44AD !important;
+        }
 
-<div class="stats-grid" id="stats-container">
-    <div class="stat-card">
-        <div class="stat-number" id="total-entries">{{ total_entries }}</div>
-        <div class="stat-label">Total Entries</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-number" id="with-garage">-</div>
-        <div class="stat-label">With Garage</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-number" id="without-garage">-</div>
-        <div class="stat-label">Without Garage</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-number" id="avg-width">-</div>
-        <div class="stat-label">Avg Width (ft)</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-number" id="avg-depth">-</div>
-        <div class="stat-label">Avg Depth (ft)</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-number" id="garage-percentage">-</div>
-        <div class="stat-label">Garage %</div>
-    </div>
-</div>
+        .custom-size-btn.selected {
+            background: #FFE135 !important;
+            color: #333 !important;
+        }
 
-<div class="card">
-    <h3>🚀 Quick Actions</h3>
-    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-        <a href="{{ url_for('entry_form') }}" class="btn btn-success">➕ Add New Entry</a>
-        <a href="{{ url_for('view_measurements') }}" class="btn">📋 View All Entries</a>
-        <a href="{{ url_for('export_data') }}" class="btn btn-secondary" target="_blank">📤 Export Data</a>
+        .custom-size-group {
+            margin-top: 15px;
+            padding: 15px;
+            background: #F0F8FF;
+            border: 2px dashed #4ECDC4;
+            border-radius: 4px;
+        }
+        
+        .door-item {
+            background: #F8F9FA;
+            border: 2px solid #333;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        
+        .door-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .door-number {
+            font-size: 12px;
+            color: #FF6B6B;
+        }
+        
+        .remove-door {
+            background: #E74C3C;
+            border: 2px solid #333;
+            color: white;
+            padding: 5px 10px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 8px;
+            cursor: pointer;
+        }
+        
+        .remove-door:hover {
+            background: #C0392B;
+        }
+        
+        .add-door-btn {
+            background: #27AE60;
+            border: 4px solid #333;
+            padding: 15px 25px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 10px;
+            cursor: pointer;
+            color: white;
+            text-shadow: 1px 1px 0px #333;
+            transition: all 0.1s;
+            box-shadow: 4px 4px 0px #333;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .add-door-btn:hover {
+            background: #229954;
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #333;
+        }
+        
+        .submit-btn {
+            background: #3498DB;
+            border: 4px solid #333;
+            padding: 20px 30px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 12px;
+            cursor: pointer;
+            color: white;
+            text-shadow: 1px 1px 0px #333;
+            transition: all 0.1s;
+            box-shadow: 4px 4px 0px #333;
+            width: 100%;
+        }
+        
+        .submit-btn:hover {
+            background: #2980B9;
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #333;
+        }
+        
+        .submit-btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: none;
+        }
+        
+        .recent-entries {
+            background: #F8F9FA;
+            border: 4px solid #333;
+            padding: 20px;
+            box-shadow: 4px 4px 0px #333;
+        }
+        
+        .recent-title {
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 12px;
+        }
+        
+        .entry-item {
+            background: white;
+            border: 2px solid #333;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 8px;
+        }
+        
+        .alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #27AE60;
+            color: white;
+            border: 3px solid #333;
+            padding: 15px;
+            font-size: 10px;
+            box-shadow: 4px 4px 0px #333;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s;
+        }
+        
+        .alert.show {
+            transform: translateX(0);
+        }
+        
+        .alert.error {
+            background: #E74C3C;
+        }
+        
+        /* Hide Google Maps error overlays */
+        .gm-err-container {
+            display: none !important;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .stats-bar {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .size-buttons {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .title {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">🚪 GARAGE DOOR DATA ENTRY</div>
+            <div class="subtitle">Simple data collection interface</div>
+        </div>
+        
+        <div class="stats-bar">
+            <div class="stat-box">
+                <div class="stat-number" id="total-doors">{{ total_entries }}</div>
+                <div class="stat-label">DOORS RECORDED</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="total-properties">0</div>
+                <div class="stat-label">PROPERTIES</div>
+            </div>
+        </div>
+        
+        <div class="form-board">
+            <form id="garage-form">
+                <div class="form-section">
+                    <div class="form-title">🏠 PROPERTY ADDRESS</div>
+                    <div class="form-group">
+                        <label class="form-label">Enter the address:</label>
+                        <input type="text" id="address" class="form-input" placeholder="Start typing an address..." required>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <div class="form-title">🚪 GARAGE DOORS</div>
+                    <div id="doors-container">
+                        <!-- Doors will be added here dynamically -->
+                    </div>
+                    <button type="button" class="add-door-btn" onclick="addDoor()">➕ ADD ANOTHER DOOR</button>
+                </div>
+                
+                <div class="form-section">
+                    <div class="form-title">📝 NOTES (OPTIONAL)</div>
+                    <div class="form-group">
+                        <textarea id="notes" name="notes" class="form-input" rows="3" placeholder="Any special observations..."></textarea>
+                    </div>
+                </div>
+                
+                <button type="submit" class="submit-btn">💾 SAVE GARAGE DOORS</button>
+            </form>
+        </div>
+        
+        {% if recent_entries %}
+        <div class="recent-entries">
+            <div class="recent-title">📋 RECENT ENTRIES</div>
+            {% for entry in recent_entries[-3:] %}
+            <div class="entry-item">
+                <strong>{{ entry.address }}</strong><br>
+                Size: {{ entry.door_size }}
+                <br><small>{{ entry.date_added }}</small>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
-</div>
-
-{% if recent_entries %}
-<div class="card">
-    <h3>📝 Recent Entries</h3>
-    <div class="table-container">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Address</th>
-                    <th>Width (ft)</th>
-                    <th>Depth (ft)</th>
-                    <th>Date</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for entry in recent_entries %}
-                <tr>
-                    <td>{{ entry.address }}</td>
-                    <td>{{ entry.garage_width if entry.garage_width > 0 else '-' }}</td>
-                    <td>{{ entry.garage_depth if entry.garage_depth > 0 else '-' }}</td>
-                    <td>{{ entry.date[:10] if entry.date else '-' }}</td>
-                    <td>
-                        <a href="{{ url_for('edit_measurement', property_id=entry.id) }}" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Edit</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-{% else %}
-<div class="card text-center">
-    <h3>🏗️ Get Started</h3>
-    <p>No entries yet. Start by adding your first garage measurement!</p>
-    <a href="{{ url_for('entry_form') }}" class="btn btn-success mt-2">Add First Entry</a>
-</div>
-{% endif %}
-
-<div class="card">
-    <h3>ℹ️ How to Use</h3>
-    <ol style="margin-left: 2rem;">
-        <li><strong>Add Entry:</strong> Click "Add New Entry" to record garage measurements for a property</li>
-        <li><strong>View All:</strong> See all recorded measurements in a sortable table</li>
-        <li><strong>Edit:</strong> Click "Edit" next to any entry to modify the data</li>
-        <li><strong>Export:</strong> Download all data as JSON for analysis or backup</li>
-    </ol>
     
-    <h4 style="margin-top: 2rem;">📏 Measurement Guidelines</h4>
-    <ul style="margin-left: 2rem;">
-        <li><strong>Width:</strong> Measure the front-facing width of the garage opening</li>
-        <li><strong>Depth:</strong> Measure from the garage door to the back wall</li>
-        <li><strong>Height:</strong> Measure from floor to ceiling at the garage door</li>
-        <li><strong>Door Count:</strong> Number of separate garage doors (1, 2, or 3)</li>
-        <li><strong>Confidence:</strong> How certain you are about the measurements</li>
-    </ul>
-</div>
-{% endblock %}
+    <!-- Google Places API -->
+    {% if google_places_api_key %}
+    <script>
+        const GOOGLE_PLACES_API_KEY = '{{ google_places_api_key }}';
 
-{% block scripts %}
-<script>
-    // Load statistics on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        loadStats();
-    });
-    
-    function loadStats() {
-        fetch('/stats')
+        // Load Google Places API
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_PLACES_API_KEY}&libraries=places&callback=initGooglePlaces`;
+        script.async = true;
+        script.defer = true;
+        script.onerror = function() {
+            console.warn('Failed to load Google Places API');
+        };
+        document.head.appendChild(script);
+
+        // Handle authentication failures
+        window.gm_authFailure = function() {
+            console.warn('Google Maps API authentication failed');
+        };
+    </script>
+    {% endif %}
+
+    <script>
+        let doorCount = 0;
+        let autocomplete = null;
+
+        // Initialize Google Places API
+        window.initGooglePlaces = function() {
+            const addressInput = document.getElementById('address');
+            if (addressInput && typeof google !== 'undefined' && google.maps && google.maps.places) {
+                try {
+                    autocomplete = new google.maps.places.Autocomplete(addressInput, {
+                        types: ['address'],
+                        componentRestrictions: { country: 'us' },
+                        fields: ['formatted_address', 'geometry', 'name']
+                    });
+
+                    autocomplete.addListener('place_changed', function() {
+                        const place = autocomplete.getPlace();
+                        if (place.formatted_address) {
+                            addressInput.value = place.formatted_address;
+                        }
+                    });
+                } catch (error) {
+                    console.warn('Error initializing Google Places:', error);
+                }
+            }
+        };
+
+        // Add a new door
+        function addDoor() {
+            doorCount++;
+            const container = document.getElementById('doors-container');
+
+            const doorDiv = document.createElement('div');
+            doorDiv.className = 'door-item';
+            doorDiv.id = `door-${doorCount}`;
+
+            doorDiv.innerHTML = `
+                <div class="door-header">
+                    <div class="door-number">DOOR ${doorCount}</div>
+                    ${doorCount > 1 ? `<button type="button" class="remove-door" onclick="removeDoor(${doorCount})">REMOVE</button>` : ''}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Door Size:</label>
+                    <div class="size-buttons">
+                        <button type="button" class="size-btn" data-door="${doorCount}" data-size="8x7">8' × 7'<br>SINGLE</button>
+                        <button type="button" class="size-btn" data-door="${doorCount}" data-size="9x7">9' × 7'<br>SINGLE</button>
+                        <button type="button" class="size-btn" data-door="${doorCount}" data-size="16x7">16' × 7'<br>DOUBLE</button>
+                        <button type="button" class="size-btn" data-door="${doorCount}" data-size="18x7">18' × 7'<br>DOUBLE</button>
+                        <button type="button" class="size-btn" data-door="${doorCount}" data-size="8x8">8' × 8'<br>SINGLE</button>
+                        <button type="button" class="size-btn" data-door="${doorCount}" data-size="16x8">16' × 8'<br>DOUBLE</button>
+                        <button type="button" class="size-btn custom-size-btn" data-door="${doorCount}" data-size="custom">CUSTOM<br>SIZE</button>
+                    </div>
+                    <input type="hidden" id="door-${doorCount}-size" value="16x7">
+                </div>
+
+                <div class="form-group custom-size-group" id="custom-size-${doorCount}" style="display: none;">
+                    <label class="form-label">Enter Custom Size:</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="number" id="door-${doorCount}-width" class="form-input" placeholder="Width" style="flex: 1;" min="1" max="50" step="0.5">
+                        <span style="font-size: 14px;">×</span>
+                        <input type="number" id="door-${doorCount}-height" class="form-input" placeholder="Height" style="flex: 1;" min="1" max="20" step="0.5">
+                        <span style="font-size: 8px; color: #666;">feet</span>
+                    </div>
+                </div>
+            `;
+
+            container.appendChild(doorDiv);
+
+            // Add event listeners for size buttons
+            doorDiv.querySelectorAll('.size-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const doorNum = this.dataset.door;
+                    const size = this.dataset.size;
+
+                    // Remove selected class from all buttons in this door
+                    doorDiv.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
+
+                    // Add selected class to clicked button
+                    this.classList.add('selected');
+
+                    // Handle custom size
+                    const customSizeDiv = document.getElementById(`custom-size-${doorNum}`);
+                    if (size === 'custom') {
+                        customSizeDiv.style.display = 'block';
+                        document.getElementById(`door-${doorNum}-size`).value = 'custom';
+                    } else {
+                        customSizeDiv.style.display = 'none';
+                        document.getElementById(`door-${doorNum}-size`).value = size;
+                    }
+                });
+            });
+
+            // Add event listeners for custom size inputs
+            const widthInput = doorDiv.querySelector(`#door-${doorCount}-width`);
+            const heightInput = doorDiv.querySelector(`#door-${doorCount}-height`);
+
+            [widthInput, heightInput].forEach(input => {
+                input.addEventListener('input', function() {
+                    const width = widthInput.value;
+                    const height = heightInput.value;
+                    if (width && height) {
+                        document.getElementById(`door-${doorCount}-size`).value = `${width}x${height}`;
+                    }
+                });
+            });
+
+            // Set default selection
+            doorDiv.querySelector('[data-size="16x7"]').classList.add('selected');
+        }
+
+        // Remove a door
+        function removeDoor(doorNum) {
+            const doorDiv = document.getElementById(`door-${doorNum}`);
+            if (doorDiv) {
+                doorDiv.remove();
+            }
+        }
+
+        // Load statistics
+        function loadStats() {
+            fetch('/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('total-doors').textContent = data.total_doors;
+                    document.getElementById('total-properties').textContent = data.total_properties;
+                })
+                .catch(error => console.error('Error loading stats:', error));
+        }
+
+        // Show alert
+        function showAlert(message, type = 'success') {
+            const alert = document.createElement('div');
+            alert.className = `alert ${type}`;
+            alert.textContent = message;
+            document.body.appendChild(alert);
+
+            setTimeout(() => alert.classList.add('show'), 100);
+            setTimeout(() => {
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 300);
+            }, 3000);
+        }
+
+        // Form submission
+        document.getElementById('garage-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const address = document.getElementById('address').value.trim();
+            const notes = document.getElementById('notes').value.trim();
+
+            if (!address) {
+                showAlert('Please enter an address', 'error');
+                return;
+            }
+
+            // Collect door data
+            const doors = [];
+            for (let i = 1; i <= doorCount; i++) {
+                const sizeInput = document.getElementById(`door-${i}-size`);
+
+                if (sizeInput) {
+                    let doorSize = sizeInput.value;
+
+                    // Validate custom size if needed
+                    if (doorSize === 'custom') {
+                        const widthInput = document.getElementById(`door-${i}-width`);
+                        const heightInput = document.getElementById(`door-${i}-height`);
+
+                        if (widthInput && heightInput && widthInput.value && heightInput.value) {
+                            doorSize = `${widthInput.value}x${heightInput.value}`;
+                        } else {
+                            showAlert(`Please enter width and height for door ${i}`, 'error');
+                            return;
+                        }
+                    }
+
+                    doors.push({
+                        size: doorSize
+                    });
+                }
+            }
+
+            if (doors.length === 0) {
+                showAlert('Please add at least one door', 'error');
+                return;
+            }
+
+            const data = {
+                address: address,
+                doors: doors,
+                notes: notes
+            };
+
+            fetch('/save_garage_door', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
             .then(response => response.json())
             .then(data => {
-                document.getElementById('total-entries').textContent = data.total_properties;
-                document.getElementById('with-garage').textContent = data.with_garage;
-                document.getElementById('without-garage').textContent = data.without_garage;
-                document.getElementById('avg-width').textContent = data.average_width;
-                document.getElementById('avg-depth').textContent = data.average_depth;
-                document.getElementById('garage-percentage').textContent = data.garage_percentage + '%';
+                if (data.status === 'success') {
+                    showAlert(data.message, 'success');
+
+                    // Reload stats
+                    loadStats();
+
+                    // Clear form
+                    document.getElementById('garage-form').reset();
+                    document.getElementById('doors-container').innerHTML = '';
+                    doorCount = 0;
+                    addDoor(); // Add first door back
+
+                    // Reload page to show new entry
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    showAlert('Error: ' + data.message, 'error');
+                }
             })
             .catch(error => {
-                console.error('Error loading stats:', error);
+                showAlert('Network error: ' + error.message, 'error');
             });
-    }
-</script>
-{% endblock %}
+        });
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStats();
+            addDoor(); // Add first door
+
+            // Try to initialize Google Places if API is already loaded
+            setTimeout(() => {
+                if (typeof google !== 'undefined' && google.maps && google.maps.places && !autocomplete) {
+                    initGooglePlaces();
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

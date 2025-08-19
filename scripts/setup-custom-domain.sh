@@ -14,7 +14,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-DOMAIN="garages.itsfait.com"
+DOMAIN="itsgarages.itsfait.com"
 PROJECT_ID="its-garages"
 REGION="us-central1"
 SERVICE_NAME="its-garages-app"
