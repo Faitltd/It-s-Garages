@@ -149,10 +149,27 @@ def save_garage_door():
         return jsonify({'status': 'error', 'message': 'Too many requests, please slow down.'}), 429
 
     try:
-        data = request.get_json() if request.is_json else request.form.to_dict()
+        # Be tolerant to various content-types and avoid BadRequest on JSON parse
+        data = request.get_json(silent=True)
+        if not data:
+            # Try raw body as JSON
+            try:
+                raw = request.get_data(cache=False, as_text=True)
+                data = json.loads(raw) if raw else None
+            except Exception:
+                data = None
+        if not data:
+            # Fallback to form-encoded
+            data = request.form.to_dict(flat=True)
+            # If doors comes as JSON string, decode it
+            if isinstance(data.get('doors'), str):
+                try:
+                    data['doors'] = json.loads(data['doors'])
+                except Exception:
+                    pass
 
         # Validate required fields
-        address = data.get('address', '').strip()
+        address = data.get('address', '').strip() if isinstance(data, dict) else ''
         if not address:
             return jsonify({'status': 'error', 'message': 'Address is required'}), 400
 
