@@ -168,13 +168,23 @@ def save_garage_door():
                 except Exception:
                     pass
 
-        # Validate required fields
+        # Validate required fields (support body, form, or query)
         address = data.get('address', '').strip() if isinstance(data, dict) else ''
+        if not address:
+            address = (request.values.get('address') or '').strip()
         if not address:
             return jsonify({'status': 'error', 'message': 'Address is required'}), 400
 
         # Handle multiple doors
-        doors = data.get('doors', [])
+        doors = data.get('doors', []) if isinstance(data, dict) else []
+        if not doors:
+            # Try query/form param 'doors' as JSON string
+            raw_doors = request.values.get('doors')
+            if raw_doors:
+                try:
+                    doors = json.loads(raw_doors)
+                except Exception:
+                    doors = []
         if not doors:
             return jsonify({'status': 'error', 'message': 'At least one door is required'}), 400
 
