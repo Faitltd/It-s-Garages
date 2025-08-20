@@ -368,7 +368,10 @@
                     <div class="form-title">🏠 PROPERTY ADDRESS</div>
                     <div class="form-group">
                         <label class="form-label">Enter the address:</label>
-                        <input type="text" id="address" class="form-input" placeholder="Start typing an address..." required>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <input type="text" id="address" class="form-input" placeholder="Start typing an address..." required style="flex:1;">
+                            <button type="button" id="use-my-location" class="size-btn" style="white-space:nowrap;">Use my location</button>
+                        </div>
                     </div>
                 </div>
                 
@@ -489,7 +492,7 @@
             try {
                 // Use the reliable legacy Autocomplete API
                 console.log('Initializing Google Places Autocomplete');
-                const autocomplete = new google.maps.places.Autocomplete(addressInput, {
+                autocomplete = new google.maps.places.Autocomplete(addressInput, {
                     types: ['address'],
                     componentRestrictions: { country: 'us' }
                 });
@@ -714,32 +717,68 @@
             loadStats();
             addDoor(); // Add first door
 
-            // Request geolocation to pre-fill address
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(async ({ coords }) => {
-                    try {
+            // Hook up the "Use my location" button
+            const locBtn = document.getElementById('use-my-location');
+            if (locBtn) {
+                locBtn.addEventListener('click', () => {
+                    const input = document.getElementById('address');
+                    if (!navigator.geolocation) {
+                        showAlert('Geolocation is not supported by your browser', 'error');
+                        return;
+                    }
+                    navigator.geolocation.getCurrentPosition(({ coords }) => {
                         const { latitude, longitude } = coords;
-                        // Use Places API to geocode lat/lng into a formatted address
-                        if (typeof google !== 'undefined' && google.maps && google.maps.Geocoder) {
-                            const geocoder = new google.maps.Geocoder();
-                            geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
-                                if (status === 'OK' && results && results[0]) {
-                                    const addressInput = document.getElementById('address');
-                                    if (addressInput && !addressInput.value) {
-                                        addressInput.value = results[0].formatted_address;
-                                    }
-                                }
-                            });
+                        if (typeof google === 'undefined' || !google.maps || !google.maps.Geocoder) {
+                            showAlert('Maps not loaded yet, trying again...', 'error');
+                            setTimeout(() => reverseGeocode(latitude, longitude), 1200);
+                        } else {
+                            reverseGeocode(latitude, longitude);
                         }
-                    } catch (e) {
-                        console.warn('Geolocation lookup failed', e);
+                    }, (err) => {
+                        console.warn('Geolocation failed', err);
+                        showAlert('Location access denied. Please allow location in your browser.', 'error');
+                    });
+                });
+            }
+
+            // Helper: reverse geocode if Maps is ready
+            async function reverseGeocode(lat, lng) {
+                if (typeof google === 'undefined' || !google.maps || !google.maps.Geocoder) {
+                    console.warn('Google Maps not ready for reverse geocode');
+                    return;
+                }
+                const geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                    if (status === 'OK' && results && results[0]) {
+                        const addressInput = document.getElementById('address');
+                        if (addressInput && !addressInput.value) {
+                            addressInput.value = results[0].formatted_address;
+                            console.log('Prefilled address from geolocation:', addressInput.value);
+                        }
+                    } else {
+                        console.warn('Reverse geocode failed:', status, results);
+                    }
+                });
+            }
+
+            // Request geolocation to pre-fill address ONLY if empty
+            const addressInput = document.getElementById('address');
+            if (addressInput && !addressInput.value && navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(({ coords }) => {
+                    const { latitude, longitude } = coords;
+                    // If Maps not ready yet, retry once after 1500ms
+                    if (typeof google === 'undefined' || !google.maps || !google.maps.Geocoder) {
+                        console.log('Maps not ready at geolocation time; retrying in 1.5s');
+                        setTimeout(() => reverseGeocode(latitude, longitude), 1500);
+                    } else {
+                        reverseGeocode(latitude, longitude);
                     }
                 }, (err) => {
                     console.warn('Geolocation permission denied or unavailable', err);
                 }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
             }
 
-            // Try to initialize Google Places if API is already loaded
+            // Initialize Google Places if API is loaded (backup)
             setTimeout(() => {
                 if (typeof google !== 'undefined' && google.maps && google.maps.places && !autocomplete) {
                     initGooglePlaces();
