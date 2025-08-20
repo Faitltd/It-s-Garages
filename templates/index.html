@@ -408,21 +408,62 @@
     <!-- Google Places API -->
     {% if google_places_api_key %}
     <script>
+        // Google Places API Fix - Version 4.1 - Define callback BEFORE loading script and use onload
+        console.log('✅ FIXED: Google Places API v4.1 - Defining initGooglePlaces before loading script');
         const GOOGLE_PLACES_API_KEY = '{{ google_places_api_key }}';
 
-        // Load Google Places API
+        // Predefine the callback on window to avoid race conditions
+        window.initGooglePlaces = window.initGooglePlaces || function() {
+            try {
+                const addressInput = document.getElementById('address');
+                if (!addressInput) {
+                    console.warn('Address input not found');
+                    return;
+                }
+                if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+                    console.warn('Google Maps API not loaded properly');
+                    addressInput.placeholder = 'Enter address manually (API not loaded)';
+                    return;
+                }
+                console.log('Initializing Google Places Autocomplete');
+                autocomplete = new google.maps.places.Autocomplete(addressInput, {
+                    types: ['address'],
+                    componentRestrictions: { country: 'us' }
+                });
+                autocomplete.addListener('place_changed', function() {
+                    const place = autocomplete.getPlace();
+                    if (place && place.formatted_address) {
+                        addressInput.value = place.formatted_address;
+                    }
+                });
+            } catch (e) {
+                console.warn('Error initializing Google Places', e);
+            }
+        };
+
+        // Load Google Places API and call our callback on load (no URL callback)
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_PLACES_API_KEY}&libraries=places&callback=initGooglePlaces`;
+        // Include geometry library for Geocoder usage
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_PLACES_API_KEY}&libraries=places,geometry&v=3.55`;
         script.async = true;
         script.defer = true;
+        script.onload = function() { try { window.initGooglePlaces(); } catch (e) { console.warn('Init failed', e); } };
         script.onerror = function() {
             console.warn('Failed to load Google Places API');
+            const addressInput = document.getElementById('address');
+            if (addressInput) {
+                addressInput.placeholder = 'Enter address manually';
+            }
         };
         document.head.appendChild(script);
 
         // Handle authentication failures
         window.gm_authFailure = function() {
-            console.warn('Google Maps API authentication failed');
+            console.warn('Google Maps API authentication failed - check API key configuration');
+            const addressInput = document.getElementById('address');
+            if (addressInput) {
+                addressInput.placeholder = 'Enter address manually (API key issue)';
+            }
         };
     </script>
     {% endif %}
@@ -431,26 +472,41 @@
         let doorCount = 0;
         let autocomplete = null;
 
-        // Initialize Google Places API
-        window.initGooglePlaces = function() {
+        // Initialize Google Places API (kept for backward compatibility if called elsewhere)
+        window.initGooglePlaces = window.initGooglePlaces || function() {
             const addressInput = document.getElementById('address');
-            if (addressInput && typeof google !== 'undefined' && google.maps && google.maps.places) {
-                try {
-                    autocomplete = new google.maps.places.Autocomplete(addressInput, {
-                        types: ['address'],
-                        componentRestrictions: { country: 'us' },
-                        fields: ['formatted_address', 'geometry', 'name']
-                    });
+            if (!addressInput) {
+                console.warn('Address input not found');
+                return;
+            }
 
-                    autocomplete.addListener('place_changed', function() {
-                        const place = autocomplete.getPlace();
-                        if (place.formatted_address) {
-                            addressInput.value = place.formatted_address;
-                        }
-                    });
-                } catch (error) {
-                    console.warn('Error initializing Google Places:', error);
-                }
+            if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+                console.warn('Google Maps API not loaded properly');
+                addressInput.placeholder = 'Enter address manually (API not loaded)';
+                return;
+            }
+
+            try {
+                // Use the reliable legacy Autocomplete API
+                console.log('Initializing Google Places Autocomplete');
+                const autocomplete = new google.maps.places.Autocomplete(addressInput, {
+                    types: ['address'],
+                    componentRestrictions: { country: 'us' }
+                });
+
+                autocomplete.addListener('place_changed', function() {
+                    const place = autocomplete.getPlace();
+                    console.log('Place selected:', place);
+                    if (place.formatted_address) {
+                        addressInput.value = place.formatted_address;
+                    }
+                });
+
+                console.log('Google Places Autocomplete initialized successfully');
+
+            } catch (error) {
+                console.warn('Error initializing Google Places:', error);
+                addressInput.placeholder = 'Enter address manually (API error)';
             }
         };
 
@@ -657,6 +713,31 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadStats();
             addDoor(); // Add first door
+
+            // Request geolocation to pre-fill address
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+                    try {
+                        const { latitude, longitude } = coords;
+                        // Use Places API to geocode lat/lng into a formatted address
+                        if (typeof google !== 'undefined' && google.maps && google.maps.Geocoder) {
+                            const geocoder = new google.maps.Geocoder();
+                            geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
+                                if (status === 'OK' && results && results[0]) {
+                                    const addressInput = document.getElementById('address');
+                                    if (addressInput && !addressInput.value) {
+                                        addressInput.value = results[0].formatted_address;
+                                    }
+                                }
+                            });
+                        }
+                    } catch (e) {
+                        console.warn('Geolocation lookup failed', e);
+                    }
+                }, (err) => {
+                    console.warn('Geolocation permission denied or unavailable', err);
+                }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
+            }
 
             // Try to initialize Google Places if API is already loaded
             setTimeout(() => {

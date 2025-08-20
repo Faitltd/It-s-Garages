@@ -9,10 +9,18 @@ with Google Places API integration.
 from flask import Flask, render_template, request, jsonify
 import os
 import json
+import threading
+from collections import defaultdict, deque
+from time import time
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 
+# Optional import: Google Cloud Storage
+try:
+    from google.cloud import storage  # type: ignore
+except Exception:  # pragma: no cover
+    storage = None
 # Load environment variables
 load_dotenv()
 
@@ -24,8 +32,59 @@ DATA_DIR = Path('data')
 DATA_DIR.mkdir(exist_ok=True)
 GOOGLE_PLACES_API_KEY = os.getenv('GOOGLE_PLACES_API_KEY', '')
 
+# Cloud Storage configuration
+GCS_BUCKET = os.getenv('GCS_BUCKET')  # e.g., 'its-garages-data'
+GCS_OBJECT = os.getenv('GCS_OBJECT', 'garage_doors.json')
+USE_GCS = bool(GCS_BUCKET)
+
+_gcs_client = None
+
+# Simple in-memory rate limiter (per-IP/token bucket)
+RATE_LIMIT_WINDOW_SECONDS = int(os.getenv('RATE_LIMIT_WINDOW_SECONDS', '60'))
+RATE_LIMIT_MAX_REQUESTS = int(os.getenv('RATE_LIMIT_MAX_REQUESTS', '30'))  # per window per IP
+_rate_lock = threading.Lock()
+_requests_log = defaultdict(deque)  # ip -> deque[timestamps]
+
+def _get_gcs_client():
+    global _gcs_client
+    if _gcs_client is None:
+        if not storage:
+            raise RuntimeError('google-cloud-storage not installed')
+        _gcs_client = storage.Client()  # uses ADC in Cloud Run
+    return _gcs_client
+
+
+def _load_from_gcs():
+    try:
+        client = _get_gcs_client()
+        bucket = client.bucket(GCS_BUCKET)
+        blob = bucket.blob(GCS_OBJECT)
+        if not blob.exists():
+            return []
+        data = blob.download_as_text()
+        return json.loads(data) if data else []
+    except Exception as e:
+        print(f"Warning: Could not load from GCS: {e}")
+        return []
+
+
+def _save_to_gcs(payload):
+    try:
+        client = _get_gcs_client()
+        bucket = client.bucket(GCS_BUCKET)
+        blob = bucket.blob(GCS_OBJECT)
+        blob.upload_from_string(json.dumps(payload, indent=2), content_type='application/json')
+        return True
+    except Exception as e:
+        print(f"Error saving to GCS: {e}")
+        return False
+
+
 def load_garage_doors():
-    """Load garage door measurements from JSON file."""
+    """Load garage door measurements from GCS if configured, otherwise local file."""
+    if USE_GCS:
+        return _load_from_gcs()
+    # Fallback to local JSON
     data_path = Path(DATA_FILE)
     if data_path.exists():
         try:
@@ -35,8 +94,11 @@ def load_garage_doors():
             print(f"Warning: Could not load garage doors: {e}")
     return []
 
+
 def save_garage_doors(garage_doors):
-    """Save garage door measurements to JSON file."""
+    """Save garage door measurements to GCS if configured, otherwise local JSON file."""
+    if USE_GCS:
+        return _save_to_gcs(garage_doors)
     try:
         with open(DATA_FILE, 'w') as f:
             json.dump(garage_doors, f, indent=2)
@@ -64,9 +126,28 @@ def index():
                          recent_entries=recent_entries,
                          google_places_api_key=GOOGLE_PLACES_API_KEY)
 
+def _rate_limited(ip: str) -> bool:
+    now = time()
+    window_start = now - RATE_LIMIT_WINDOW_SECONDS
+    with _rate_lock:
+        dq = _requests_log[ip]
+        # drop old timestamps
+        while dq and dq[0] < window_start:
+            dq.popleft()
+        if len(dq) >= RATE_LIMIT_MAX_REQUESTS:
+            return True
+        dq.append(now)
+        return False
+
+
 @app.route('/save_garage_door', methods=['POST'])
 def save_garage_door():
     """Save garage door entries."""
+    # Basic rate limiting per-IP
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr or 'unknown').split(',')[0].strip()
+    if _rate_limited(ip):
+        return jsonify({'status': 'error', 'message': 'Too many requests, please slow down.'}), 429
+
     try:
         data = request.get_json() if request.is_json else request.form.to_dict()
 
