@@ -447,7 +447,7 @@
         // Load Google Places API and call our callback on load (no URL callback)
         const script = document.createElement('script');
         // Include geometry library for Geocoder usage
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_PLACES_API_KEY}&libraries=places,geometry&v=3.55`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_PLACES_API_KEY}&libraries=places&v=weekly&loading=async`;
         script.async = true;
         script.defer = true;
         script.onload = function() { try { window.initGooglePlaces(); } catch (e) { console.warn('Init failed', e); } };
