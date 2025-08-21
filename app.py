@@ -31,6 +31,8 @@ DATA_FILE = os.getenv('MEASUREMENTS_FILE', 'data/garage_doors.json')
 DATA_DIR = Path('data')
 DATA_DIR.mkdir(exist_ok=True)
 GOOGLE_PLACES_API_KEY = os.getenv('GOOGLE_PLACES_API_KEY', '')
+GOOGLE_GEOCODING_API_KEY = os.getenv('GOOGLE_GEOCODING_API_KEY', '')  # server-side key for reverse geocoding
+
 
 # Cloud Storage configuration
 GCS_BUCKET = os.getenv('GCS_BUCKET')  # e.g., 'its-garages-data'
@@ -244,6 +246,34 @@ def stats():
         'total_doors': total_doors,
         'total_properties': unique_addresses
     })
+
+@app.route('/reverse_geocode', methods=['POST'])
+def reverse_geocode():
+    """Server-side reverse geocoding fallback. Body: { lat, lng }"""
+    try:
+        data = request.get_json(silent=True) or {}
+        lat = data.get('lat')
+        lng = data.get('lng')
+        if lat is None or lng is None:
+            return jsonify({'status': 'error', 'message': 'lat and lng are required'}), 400
+        if not GOOGLE_GEOCODING_API_KEY:
+            return jsonify({'status': 'error', 'message': 'Server geocoding key not configured'}), 500
+
+        import requests
+        resp = requests.get(
+            'https://maps.googleapis.com/maps/api/geocode/json',
+            params={'latlng': f'{lat},{lng}', 'key': GOOGLE_GEOCODING_API_KEY},
+            timeout=10
+        )
+        if resp.status_code != 200:
+            return jsonify({'status': 'error', 'message': f'Geocode HTTP {resp.status_code}'}), 502
+        payload = resp.json()
+        if payload.get('status') != 'OK' or not payload.get('results'):
+            return jsonify({'status': 'error', 'message': f"Geocode failed: {payload.get('status')}"}), 502
+        formatted = payload['results'][0]['formatted_address']
+        return jsonify({'status': 'ok', 'formatted_address': formatted})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Server error: {e}'}), 500
 
 @app.route('/health')
 def health_check():

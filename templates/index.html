@@ -743,22 +743,51 @@
 
             // Helper: reverse geocode if Maps is ready
             async function reverseGeocode(lat, lng) {
-                if (typeof google === 'undefined' || !google.maps || !google.maps.Geocoder) {
-                    console.warn('Google Maps not ready for reverse geocode');
-                    return;
-                }
-                const geocoder = new google.maps.Geocoder();
-                geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-                    if (status === 'OK' && results && results[0]) {
+                const tryClient = () => new Promise((resolve, reject) => {
+                    if (typeof google === 'undefined' || !google.maps || !google.maps.Geocoder) {
+                        return reject(new Error('MAPS_NOT_READY'));
+                    }
+                    const geocoder = new google.maps.Geocoder();
+                    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                        if (status === 'OK' && results && results[0]) {
+                            resolve(results[0].formatted_address);
+                        } else {
+                            reject(new Error(status || 'GEOCODE_FAILED'));
+                        }
+                    });
+                });
+
+                const tryServer = async () => {
+                    const resp = await fetch('/reverse_geocode', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ lat, lng })
+                    });
+                    const data = await resp.json().catch(() => ({}));
+                    if (resp.ok && data.status === 'ok' && data.formatted_address) return data.formatted_address;
+                    throw new Error(data.message || `SERVER_GEOCODE_${resp.status}`);
+                };
+
+                try {
+                    const addr = await tryClient();
+                    const addressInput = document.getElementById('address');
+                    if (addressInput && !addressInput.value) {
+                        addressInput.value = addr;
+                        console.log('Prefilled address from geolocation (client):', addr);
+                    }
+                } catch (e) {
+                    console.warn('Client geocode failed, falling back to server:', e?.message || e);
+                    try {
+                        const addr = await tryServer();
                         const addressInput = document.getElementById('address');
                         if (addressInput && !addressInput.value) {
-                            addressInput.value = results[0].formatted_address;
-                            console.log('Prefilled address from geolocation:', addressInput.value);
+                            addressInput.value = addr;
+                            console.log('Prefilled address from geolocation (server):', addr);
                         }
-                    } else {
-                        console.warn('Reverse geocode failed:', status, results);
+                    } catch (err) {
+                        console.warn('Server reverse geocode failed:', err?.message || err);
                     }
-                });
+                }
             }
 
             // Request geolocation to pre-fill address ONLY if empty
