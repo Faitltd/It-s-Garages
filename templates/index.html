@@ -424,8 +424,7 @@
                     return;
                 }
                 if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
-                    console.warn('Google Maps API not loaded properly');
-                    addressInput.placeholder = 'Enter address manually (API not loaded)';
+                    // Maps not ready yet; Autocomplete will be initialized later by backup check
                     return;
                 }
                 console.log('Initializing Google Places Autocomplete');
@@ -475,43 +474,7 @@
         let doorCount = 0;
         let autocomplete = null;
 
-        // Initialize Google Places API (kept for backward compatibility if called elsewhere)
-        window.initGooglePlaces = window.initGooglePlaces || function() {
-            const addressInput = document.getElementById('address');
-            if (!addressInput) {
-                console.warn('Address input not found');
-                return;
-            }
 
-            if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
-                console.warn('Google Maps API not loaded properly');
-                addressInput.placeholder = 'Enter address manually (API not loaded)';
-                return;
-            }
-
-            try {
-                // Use the reliable legacy Autocomplete API
-                console.log('Initializing Google Places Autocomplete');
-                autocomplete = new google.maps.places.Autocomplete(addressInput, {
-                    types: ['address'],
-                    componentRestrictions: { country: 'us' }
-                });
-
-                autocomplete.addListener('place_changed', function() {
-                    const place = autocomplete.getPlace();
-                    console.log('Place selected:', place);
-                    if (place.formatted_address) {
-                        addressInput.value = place.formatted_address;
-                    }
-                });
-
-                console.log('Google Places Autocomplete initialized successfully');
-
-            } catch (error) {
-                console.warn('Error initializing Google Places:', error);
-                addressInput.placeholder = 'Enter address manually (API error)';
-            }
-        };
 
         // Add a new door
         function addDoor() {
@@ -728,12 +691,7 @@
                     }
                     navigator.geolocation.getCurrentPosition(({ coords }) => {
                         const { latitude, longitude } = coords;
-                        if (typeof google === 'undefined' || !google.maps || !google.maps.Geocoder) {
-                            showAlert('Maps not loaded yet, trying again...', 'error');
-                            setTimeout(() => reverseGeocode(latitude, longitude), 1200);
-                        } else {
-                            reverseGeocode(latitude, longitude);
-                        }
+                        reverseGeocode(latitude, longitude);
                     }, (err) => {
                         console.warn('Geolocation failed', err);
                         showAlert('Location access denied. Please allow location in your browser.', 'error');
@@ -795,13 +753,8 @@
             if (addressInput && !addressInput.value && navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(({ coords }) => {
                     const { latitude, longitude } = coords;
-                    // If Maps not ready yet, retry once after 1500ms
-                    if (typeof google === 'undefined' || !google.maps || !google.maps.Geocoder) {
-                        console.log('Maps not ready at geolocation time; retrying in 1.5s');
-                        setTimeout(() => reverseGeocode(latitude, longitude), 1500);
-                    } else {
-                        reverseGeocode(latitude, longitude);
-                    }
+                    // Immediately try; reverseGeocode will fall back to server if Maps not ready
+                    reverseGeocode(latitude, longitude);
                 }, (err) => {
                     console.warn('Geolocation permission denied or unavailable', err);
                 }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
