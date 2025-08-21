@@ -6,7 +6,7 @@ A simple Flask web application for entering garage door measurements
 with Google Places API integration.
 """
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect
 import os
 import json
 import threading
@@ -25,6 +25,20 @@ except Exception:  # pragma: no cover
 load_dotenv()
 
 app = Flask(__name__)
+
+# Canonical host enforcement (force www)
+CANONICAL_HOST = os.getenv('CANONICAL_HOST', 'www.itsgarages.itsfait.com')
+NON_WWW_HOST = 'itsgarages.itsfait.com'
+
+@app.before_request
+def enforce_canonical_host():
+    host = request.headers.get('Host', '')
+    # Only redirect the public non-www host to www; allow Cloud Run *.run.app and others
+    if host == NON_WWW_HOST and CANONICAL_HOST and CANONICAL_HOST != host:
+        target = request.url.replace(f'://{host}', f'://{CANONICAL_HOST}', 1)
+        # 308 preserves method/body for any POSTs, but this should mainly affect GETs
+        return redirect(target, code=308)
+    return None
 
 # Configuration
 DATA_FILE = os.getenv('MEASUREMENTS_FILE', 'data/garage_doors.json')
