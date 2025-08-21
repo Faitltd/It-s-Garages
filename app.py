@@ -247,13 +247,28 @@ def stats():
         'total_properties': unique_addresses
     })
 
-@app.route('/reverse_geocode', methods=['POST'])
+@app.route('/reverse_geocode', methods=['POST', 'GET'])
 def reverse_geocode():
-    """Server-side reverse geocoding fallback. Body: { lat, lng }"""
+    """Server-side reverse geocoding fallback.
+    Accepts JSON body {lat, lng} or query/form params lat,lng.
+    """
     try:
         data = request.get_json(silent=True) or {}
-        lat = data.get('lat')
-        lng = data.get('lng')
+        lat = data.get('lat') if isinstance(data, dict) else None
+        lng = data.get('lng') if isinstance(data, dict) else None
+        # Fallback to query/form values
+        if lat is None:
+            lat = request.values.get('lat')
+        if lng is None:
+            lng = request.values.get('lng')
+        # Convert to float if strings
+        try:
+            lat = float(lat) if lat is not None else None
+            lng = float(lng) if lng is not None else None
+        except (TypeError, ValueError):
+            lat = None
+            lng = None
+
         if lat is None or lng is None:
             return jsonify({'status': 'error', 'message': 'lat and lng are required'}), 400
         if not GOOGLE_GEOCODING_API_KEY:
